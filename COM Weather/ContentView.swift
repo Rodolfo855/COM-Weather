@@ -255,6 +255,10 @@ class NewsletterViewController: UIViewController, UITableViewDataSource, UITable
     }
     
     private func playVideo(named name: String) {
+        do {
+            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .moviePlayback)
+            try AVAudioSession.sharedInstance().setActive(true)
+        } catch { print("Failed to set audio on file: \(error)") }
         let extensions = ["mp4", "MOV", "m4v"]
         var videoURL: URL?
         
