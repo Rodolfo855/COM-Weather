@@ -31,9 +31,12 @@ class NewsletterViewController: UIViewController, UITableViewDataSource, UITable
         super.viewDidLoad()
         title = "Campus Feed"
         navigationItem.rightBarButtonItem = UIBarButtonItem(barButtonSystemItem: .done, target: self, action: #selector(dismissVC))
-        view.backgroundColor = .white
+        
+        // Forced White/Light Background to match Live Weather
+        view.backgroundColor = UIColor(white: 0.94, alpha: 1.0)
         
         tableView.dataSource = self; tableView.delegate = self
+        tableView.backgroundColor = .clear
         tableView.register(FeedCell.self, forCellReuseIdentifier: "FeedCell")
         tableView.separatorStyle = .none
         tableView.translatesAutoresizingMaskIntoConstraints = false
@@ -73,8 +76,12 @@ class NewsletterViewController: UIViewController, UITableViewDataSource, UITable
 }
 
 class FeedCell: UITableViewCell {
-    let card = UIView(); let iv = UIImageView(); let play = UIImageView(image: UIImage(systemName: "play.circle.fill"))
-    let tagL = UILabel(); let titleL = UILabel(); let bodyL = UILabel(); let locBlur = UIVisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterialDark))
+    let card = UIView()
+    let shadowContainer = UIView() // Added for consistent shadows
+    let iv = UIImageView()
+    let play = UIImageView(image: UIImage(systemName: "play.circle.fill"))
+    let tagL = UILabel(); let titleL = UILabel(); let bodyL = UILabel()
+    let locBlur = UIVisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterialDark))
     let locL = UILabel()
 
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
@@ -83,8 +90,19 @@ class FeedCell: UITableViewCell {
     required init?(coder: NSCoder) { fatalError() }
 
     func setup() {
-        selectionStyle = .none; card.backgroundColor = UIColor(white: 0.98, alpha: 1); card.layer.cornerRadius = 20; card.clipsToBounds = true
-        iv.contentMode = .scaleAspectFill; iv.clipsToBounds = true; play.tintColor = .white
+        selectionStyle = .none; backgroundColor = .clear
+        card.backgroundColor = .white; card.layer.cornerRadius = 20; card.clipsToBounds = true
+        
+        // Consistent Bold Shadow
+        shadowContainer.backgroundColor = .clear
+        shadowContainer.layer.shadowColor = UIColor.black.cgColor
+        shadowContainer.layer.shadowOpacity = 0.45
+        shadowContainer.layer.shadowOffset = CGSize(width: 0, height: 10)
+        shadowContainer.layer.shadowRadius = 15
+        shadowContainer.layer.masksToBounds = false
+
+        iv.contentMode = .scaleAspectFill; iv.clipsToBounds = true; iv.layer.cornerRadius = 15
+        play.tintColor = .white
         locBlur.layer.cornerRadius = 6; locBlur.clipsToBounds = true
         locL.font = .systemFont(ofSize: 9, weight: .bold); locL.textColor = .white
         tagL.font = .boldSystemFont(ofSize: 12); tagL.textColor = .systemCyan
@@ -92,29 +110,46 @@ class FeedCell: UITableViewCell {
         bodyL.font = .systemFont(ofSize: 14); bodyL.numberOfLines = 2; bodyL.textColor = .darkGray
         
         contentView.addSubview(card)
-        [iv, tagL, titleL, bodyL, play].forEach { $0.translatesAutoresizingMaskIntoConstraints = false; card.addSubview($0) }
+        [shadowContainer, tagL, titleL, bodyL].forEach { $0.translatesAutoresizingMaskIntoConstraints = false; card.addSubview($0) }
+        shadowContainer.addSubview(iv); iv.addSubview(play)
         iv.addSubview(locBlur); locBlur.contentView.addSubview(locL)
-        locBlur.translatesAutoresizingMaskIntoConstraints = false; locL.translatesAutoresizingMaskIntoConstraints = false
-        card.translatesAutoresizingMaskIntoConstraints = false
         
+        [iv, play, locBlur, locL, card].forEach { $0.translatesAutoresizingMaskIntoConstraints = false }
+
         NSLayoutConstraint.activate([
             card.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 10),
             card.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 15),
             card.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -15),
             card.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -10),
-            iv.topAnchor.constraint(equalTo: card.topAnchor), iv.leadingAnchor.constraint(equalTo: card.leadingAnchor),
-            iv.trailingAnchor.constraint(equalTo: card.trailingAnchor), iv.heightAnchor.constraint(equalToConstant: 200),
+            
+            shadowContainer.topAnchor.constraint(equalTo: card.topAnchor, constant: 12),
+            shadowContainer.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 12),
+            shadowContainer.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -12),
+            shadowContainer.heightAnchor.constraint(equalToConstant: 200),
+            
+            iv.topAnchor.constraint(equalTo: shadowContainer.topAnchor),
+            iv.leadingAnchor.constraint(equalTo: shadowContainer.leadingAnchor),
+            iv.trailingAnchor.constraint(equalTo: shadowContainer.trailingAnchor),
+            iv.bottomAnchor.constraint(equalTo: shadowContainer.bottomAnchor),
+            
             locBlur.leadingAnchor.constraint(equalTo: iv.leadingAnchor, constant: 10),
             locBlur.bottomAnchor.constraint(equalTo: iv.bottomAnchor, constant: -10),
             locL.centerXAnchor.constraint(equalTo: locBlur.contentView.centerXAnchor),
             locL.centerYAnchor.constraint(equalTo: locBlur.contentView.centerYAnchor),
             locBlur.widthAnchor.constraint(equalTo: locL.widthAnchor, constant: 12),
             locBlur.heightAnchor.constraint(equalTo: locL.heightAnchor, constant: 8),
-            play.centerXAnchor.constraint(equalTo: iv.centerXAnchor), play.centerYAnchor.constraint(equalTo: iv.centerYAnchor),
-            play.widthAnchor.constraint(equalToConstant: 50), play.heightAnchor.constraint(equalToConstant: 50),
-            tagL.topAnchor.constraint(equalTo: iv.bottomAnchor, constant: 12), tagL.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 15),
-            titleL.topAnchor.constraint(equalTo: tagL.bottomAnchor, constant: 4), titleL.leadingAnchor.constraint(equalTo: tagL.leadingAnchor),
-            bodyL.topAnchor.constraint(equalTo: titleL.bottomAnchor, constant: 4), bodyL.leadingAnchor.constraint(equalTo: tagL.leadingAnchor),
+            
+            play.centerXAnchor.constraint(equalTo: iv.centerXAnchor),
+            play.centerYAnchor.constraint(equalTo: iv.centerYAnchor),
+            play.widthAnchor.constraint(equalToConstant: 50),
+            play.heightAnchor.constraint(equalToConstant: 50),
+            
+            tagL.topAnchor.constraint(equalTo: shadowContainer.bottomAnchor, constant: 12),
+            tagL.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 15),
+            titleL.topAnchor.constraint(equalTo: tagL.bottomAnchor, constant: 4),
+            titleL.leadingAnchor.constraint(equalTo: tagL.leadingAnchor),
+            bodyL.topAnchor.constraint(equalTo: titleL.bottomAnchor, constant: 4),
+            bodyL.leadingAnchor.constraint(equalTo: tagL.leadingAnchor),
             bodyL.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -15)
         ])
     }

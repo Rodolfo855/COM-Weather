@@ -65,6 +65,16 @@ class WeatherViewController: UIViewController {
     
     private func createWeatherCard(title: String, subtext: String, imgName: String, locLabel: String) -> UIView {
         let card = UIView(); card.backgroundColor = .white; card.layer.cornerRadius = 20
+        
+        // --- BOLDER SHADOW LOGIC ---
+        let shadowContainer = UIView()
+        shadowContainer.backgroundColor = .clear
+        shadowContainer.layer.shadowColor = UIColor.black.cgColor
+        shadowContainer.layer.shadowOpacity = 0.45 // Bolder
+        shadowContainer.layer.shadowOffset = CGSize(width: 0, height: 10)
+        shadowContainer.layer.shadowRadius = 15 // Softer, deeper spread
+        shadowContainer.layer.masksToBounds = false
+        
         let iv = UIImageView(image: UIImage(named: imgName) ?? UIImage(systemName: "photo"))
         iv.contentMode = .scaleAspectFill; iv.clipsToBounds = true; iv.layer.cornerRadius = 15
         
@@ -76,22 +86,28 @@ class WeatherViewController: UIViewController {
         let sLabel = UILabel(); sLabel.text = subtext; sLabel.textColor = .systemBlue
         let syncLabel = UILabel(); syncLabel.text = "Synced: \(Date().formatted(date: .omitted, time: .shortened))"; syncLabel.font = .systemFont(ofSize: 12); syncLabel.textColor = .lightGray
         
-        [iv, tLabel, sLabel, syncLabel].forEach { $0.translatesAutoresizingMaskIntoConstraints = false; card.addSubview($0) }
+        [shadowContainer, tLabel, sLabel, syncLabel].forEach { $0.translatesAutoresizingMaskIntoConstraints = false; card.addSubview($0) }
+        shadowContainer.addSubview(iv)
+        iv.translatesAutoresizingMaskIntoConstraints = false
         iv.addSubview(blur); blur.contentView.addSubview(lTag)
         blur.translatesAutoresizingMaskIntoConstraints = false; lTag.translatesAutoresizingMaskIntoConstraints = false
         
         NSLayoutConstraint.activate([
-            iv.topAnchor.constraint(equalTo: card.topAnchor, constant: 12),
-            iv.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 12),
-            iv.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -12),
-            iv.heightAnchor.constraint(equalToConstant: 180),
+            shadowContainer.topAnchor.constraint(equalTo: card.topAnchor, constant: 12),
+            shadowContainer.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 12),
+            shadowContainer.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -12),
+            shadowContainer.heightAnchor.constraint(equalToConstant: 180),
+            iv.topAnchor.constraint(equalTo: shadowContainer.topAnchor),
+            iv.leadingAnchor.constraint(equalTo: shadowContainer.leadingAnchor),
+            iv.trailingAnchor.constraint(equalTo: shadowContainer.trailingAnchor),
+            iv.bottomAnchor.constraint(equalTo: shadowContainer.bottomAnchor),
             blur.leadingAnchor.constraint(equalTo: iv.leadingAnchor, constant: 10),
             blur.bottomAnchor.constraint(equalTo: iv.bottomAnchor, constant: -10),
             lTag.centerXAnchor.constraint(equalTo: blur.contentView.centerXAnchor),
             lTag.centerYAnchor.constraint(equalTo: blur.contentView.centerYAnchor),
             blur.widthAnchor.constraint(equalTo: lTag.widthAnchor, constant: 16),
             blur.heightAnchor.constraint(equalTo: lTag.heightAnchor, constant: 10),
-            tLabel.topAnchor.constraint(equalTo: iv.bottomAnchor, constant: 12),
+            tLabel.topAnchor.constraint(equalTo: shadowContainer.bottomAnchor, constant: 12),
             tLabel.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 15),
             sLabel.topAnchor.constraint(equalTo: tLabel.bottomAnchor, constant: 4),
             sLabel.leadingAnchor.constraint(equalTo: tLabel.leadingAnchor),
