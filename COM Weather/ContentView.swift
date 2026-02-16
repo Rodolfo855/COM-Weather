@@ -21,11 +21,17 @@ struct ContentView: View {
         }
         .sheet(item: $activeSheet) { item in
             switch item {
-            case .weather: WeatherViewControllerWrapper()
-            case .newsletter: NewsletterViewControllerWrapper()
-            case .map: CampusMapView()
+                case .weather:
+                    WeatherViewControllerWrapper()
+                        .ignoresSafeArea(edges: .bottom) 
+                case .newsletter:
+                    NewsletterViewControllerWrapper()
+                        .ignoresSafeArea(edges: .bottom)
+                case .map:
+                    CampusMapView()
+                        .ignoresSafeArea(edges: .bottom)
+                }
             }
-        }
     }
     
     private var headerView: some View {

@@ -32,7 +32,7 @@ class WeatherViewController: UIViewController {
         super.viewDidLoad()
         title = "Live Weather"
         navigationItem.rightBarButtonItem = UIBarButtonItem(barButtonSystemItem: .done, target: self, action: #selector(dismissVC))
-        view.backgroundColor = UIColor(white: 0.94, alpha: 1.0)
+        view.backgroundColor = UIColor(white: 0.87, alpha: 1.0)
         setupLayout()
         
         for (index, item) in weatherData.enumerated() {
@@ -84,9 +84,10 @@ class WeatherViewController: UIViewController {
             scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
             
             stackView.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor, constant: 20),
-            stackView.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor, constant: -60),
+            stackView.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor, constant: -30),
             stackView.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor)
         ])
+        view.layoutMargins = UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 0)
     }
     
     private func createWeatherCard(title: String, subtext: String, imgName: String, locLabel: String) -> UIView {

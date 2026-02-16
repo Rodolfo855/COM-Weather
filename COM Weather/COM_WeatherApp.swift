@@ -11,7 +11,7 @@ import SwiftUI
 struct COM_WeatherApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            ContentView().ignoresSafeArea(edges: .bottom)
         }
     }
 }
