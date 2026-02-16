@@ -23,7 +23,7 @@ class ZoomAnimationViewController: UIViewController {
         let iv = UIImageView(image: UIImage(named: imageName ?? "") ?? UIImage(systemName: "photo"))
         iv.contentMode = .scaleAspectFill
         iv.clipsToBounds = true
-        iv.layer.cornerRadius = 25
+        iv.layer.cornerRadius = 50
         
         let titleLabel = UILabel()
         titleLabel.text = headline
@@ -46,7 +46,7 @@ class ZoomAnimationViewController: UIViewController {
         descriptionLabel.text = """
         This is a detailed view for \(headline ?? "this location"). 
         
-        Developer: Victor Rosales
+        Developer: Victor Rosales - Test
         """
         descriptionLabel.numberOfLines = 0
         descriptionLabel.textColor = .darkGray
