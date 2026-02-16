@@ -20,9 +20,9 @@ class WeatherViewController: UIViewController {
     let stackView = UIStackView()
     
     let weatherData = [
-        ("Kentfield Campus", "68°F - Sunny", "banner1", "Main Quad"),
+        ("Kentfield Campus", "68°F - Sunny", "banner1", "New Building"),
         ("Indian Valley", "64°F - Breeze", "sunny", "Organic Farm"),
-        ("Science Village", "67°F - Optimal", "image3", "Lab Wing"),
+        ("Science Village", "67°F - Optimal", "image3", "Lab"),
         ("Student Center", "70°F - Clear", "image4", "Bookstore"),
         ("Performing Arts", "66°F - Cool", "image5", "Theater"),
         ("Wellness Center", "69°F - Calm", "sunny", "Gymnasium")
@@ -103,16 +103,30 @@ class WeatherViewController: UIViewController {
         let iv = UIImageView(image: UIImage(named: imgName) ?? UIImage(systemName: "photo"))
         iv.contentMode = .scaleAspectFill; iv.clipsToBounds = true; iv.layer.cornerRadius = 15
         
+        // --- NEW: BLUR OVERLAY LOGIC ---
+        let locBlur = UIVisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterialDark))
+        locBlur.layer.cornerRadius = 6; locBlur.clipsToBounds = true
+        
+        let lLabel = UILabel()
+        lLabel.text = locLabel.uppercased() // Matches the style of the first class
+        lLabel.font = .systemFont(ofSize: 9, weight: .bold)
+        lLabel.textColor = .white
+        // ------------------------------
+        
         let tLabel = UILabel(); tLabel.text = title; tLabel.font = .boldSystemFont(ofSize: 22)
-            tLabel.textColor = .black
+        tLabel.textColor = .black
         let sLabel = UILabel(); sLabel.text = subtext; sLabel.textColor = .systemBlue
         
+        // Add hierarchy
         [shadowContainer, tLabel, sLabel].forEach {
             $0.translatesAutoresizingMaskIntoConstraints = false
             card.addSubview($0)
         }
         shadowContainer.addSubview(iv)
-        iv.translatesAutoresizingMaskIntoConstraints = false
+        iv.addSubview(locBlur)
+        locBlur.contentView.addSubview(lLabel)
+        
+        [iv, locBlur, lLabel].forEach { $0.translatesAutoresizingMaskIntoConstraints = false }
         
         NSLayoutConstraint.activate([
             shadowContainer.topAnchor.constraint(equalTo: card.topAnchor, constant: 12),
@@ -125,12 +139,25 @@ class WeatherViewController: UIViewController {
             iv.trailingAnchor.constraint(equalTo: shadowContainer.trailingAnchor),
             iv.bottomAnchor.constraint(equalTo: shadowContainer.bottomAnchor),
             
+            // --- NEW: CONSTRAINTS FOR OVERLAY ---
+            locBlur.leadingAnchor.constraint(equalTo: iv.leadingAnchor, constant: 10),
+            locBlur.bottomAnchor.constraint(equalTo: iv.bottomAnchor, constant: -10),
+            
+            lLabel.centerXAnchor.constraint(equalTo: locBlur.contentView.centerXAnchor),
+            lLabel.centerYAnchor.constraint(equalTo: locBlur.contentView.centerYAnchor),
+            
+            // Padding inside the blur
+            locBlur.widthAnchor.constraint(equalTo: lLabel.widthAnchor, constant: 12),
+            locBlur.heightAnchor.constraint(equalTo: lLabel.heightAnchor, constant: 8),
+            // ------------------------------------
+            
             tLabel.topAnchor.constraint(equalTo: shadowContainer.bottomAnchor, constant: 12),
             tLabel.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 15),
             sLabel.topAnchor.constraint(equalTo: tLabel.bottomAnchor, constant: 4),
             sLabel.leadingAnchor.constraint(equalTo: tLabel.leadingAnchor),
             sLabel.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -18)
         ])
+        
         return card
     }
 }
