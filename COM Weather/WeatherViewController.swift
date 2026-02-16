@@ -2,7 +2,7 @@
 //  WeatherViewController.swift
 //  COM Weather
 //
-//  Created by Victor Rosales  on 2/14/26.
+//  Created by Victor Rosales on 2/14/26.
 //
 
 import UIKit
@@ -84,7 +84,6 @@ class WeatherViewController: UIViewController {
             scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
             
             stackView.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor, constant: 20),
-            // The -60 constant here provides the "bounce padding" you wanted
             stackView.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor, constant: -60),
             stackView.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor)
         ])
@@ -103,30 +102,37 @@ class WeatherViewController: UIViewController {
         let iv = UIImageView(image: UIImage(named: imgName) ?? UIImage(systemName: "photo"))
         iv.contentMode = .scaleAspectFill; iv.clipsToBounds = true; iv.layer.cornerRadius = 15
         
-        // --- NEW: BLUR OVERLAY LOGIC ---
-        let locBlur = UIVisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterialDark))
-        locBlur.layer.cornerRadius = 6; locBlur.clipsToBounds = true
+        // --- PRO OVERLAY: PIN ICON + TEXT ---
+        let pinIcon = UIImageView(image: UIImage(systemName: "mappin.and.ellipse"))
+        pinIcon.tintColor = .white
+        pinIcon.preferredSymbolConfiguration = .init(pointSize: 10, weight: .bold)
         
         let lLabel = UILabel()
-        lLabel.text = locLabel.uppercased() // Matches the style of the first class
-        lLabel.font = .systemFont(ofSize: 9, weight: .bold)
+        lLabel.text = locLabel.uppercased()
+        lLabel.font = .systemFont(ofSize: 10, weight: .black)
         lLabel.textColor = .white
-        // ------------------------------
         
+        let hStack = UIStackView(arrangedSubviews: [pinIcon, lLabel])
+        hStack.axis = .horizontal; hStack.spacing = 4; hStack.alignment = .center
+        
+        let locBlur = UIVisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterialDark))
+        locBlur.layer.cornerRadius = 8; locBlur.clipsToBounds = true
+        // ------------------------------------
+
         let tLabel = UILabel(); tLabel.text = title; tLabel.font = .boldSystemFont(ofSize: 22)
         tLabel.textColor = .black
         let sLabel = UILabel(); sLabel.text = subtext; sLabel.textColor = .systemBlue
         
-        // Add hierarchy
+        // ADD HIERARCHY
         [shadowContainer, tLabel, sLabel].forEach {
             $0.translatesAutoresizingMaskIntoConstraints = false
             card.addSubview($0)
         }
         shadowContainer.addSubview(iv)
         iv.addSubview(locBlur)
-        locBlur.contentView.addSubview(lLabel)
+        locBlur.contentView.addSubview(hStack)
         
-        [iv, locBlur, lLabel].forEach { $0.translatesAutoresizingMaskIntoConstraints = false }
+        [iv, locBlur, hStack, pinIcon].forEach { $0.translatesAutoresizingMaskIntoConstraints = false }
         
         NSLayoutConstraint.activate([
             shadowContainer.topAnchor.constraint(equalTo: card.topAnchor, constant: 12),
@@ -139,17 +145,20 @@ class WeatherViewController: UIViewController {
             iv.trailingAnchor.constraint(equalTo: shadowContainer.trailingAnchor),
             iv.bottomAnchor.constraint(equalTo: shadowContainer.bottomAnchor),
             
-            // --- NEW: CONSTRAINTS FOR OVERLAY ---
-            locBlur.leadingAnchor.constraint(equalTo: iv.leadingAnchor, constant: 10),
-            locBlur.bottomAnchor.constraint(equalTo: iv.bottomAnchor, constant: -10),
+            // --- FIXED: BOTTOM LEFT ALIGNED OVERLAY ---
+            // Pin the bottom of the blur to the bottom of the image (with 12pt padding)
+            locBlur.bottomAnchor.constraint(equalTo: iv.bottomAnchor, constant: -12),
+            locBlur.leadingAnchor.constraint(equalTo: iv.leadingAnchor, constant: 12),
             
-            lLabel.centerXAnchor.constraint(equalTo: locBlur.contentView.centerXAnchor),
-            lLabel.centerYAnchor.constraint(equalTo: locBlur.contentView.centerYAnchor),
+            pinIcon.widthAnchor.constraint(equalToConstant: 12),
+            pinIcon.heightAnchor.constraint(equalToConstant: 12),
             
-            // Padding inside the blur
-            locBlur.widthAnchor.constraint(equalTo: lLabel.widthAnchor, constant: 12),
-            locBlur.heightAnchor.constraint(equalTo: lLabel.heightAnchor, constant: 8),
-            // ------------------------------------
+            hStack.centerXAnchor.constraint(equalTo: locBlur.contentView.centerXAnchor),
+            hStack.centerYAnchor.constraint(equalTo: locBlur.contentView.centerYAnchor),
+            
+            locBlur.widthAnchor.constraint(equalTo: hStack.widthAnchor, constant: 16),
+            locBlur.heightAnchor.constraint(equalTo: hStack.heightAnchor, constant: 10),
+            // ------------------------------------------
             
             tLabel.topAnchor.constraint(equalTo: shadowContainer.bottomAnchor, constant: 12),
             tLabel.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 15),
