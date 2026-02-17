@@ -11,11 +11,11 @@ import MapKit
 struct CampusMapView: View {
     @Environment(\.dismiss) var dismiss
     
-    private let campusCenter = CLLocationCoordinate2D(latitude: 37.9562, longitude: -122.5515)
+    private let campusCenter = CLLocationCoordinate2D(latitude: 37.9555, longitude: -122.5497)
     
     @State private var position: MapCameraPosition = .region(
         MKCoordinateRegion(
-            center: CLLocationCoordinate2D(latitude: 37.9562, longitude: -122.5515),
+            center: CLLocationCoordinate2D(latitude: 37.9555, longitude: -122.5497),
             span: MKCoordinateSpan(latitudeDelta: 0.02, longitudeDelta: 0.02)
         )
     )
@@ -26,9 +26,16 @@ struct CampusMapView: View {
     var body: some View {
         NavigationStack {
             Map(position: $position, selection: $selectedMarkerID) {
-                Marker("College of Marin", coordinate: campusCenter)
-                    .tint(.red)
-                    .tag("campus_main")
+                Annotation("COM Building", coordinate: campusCenter){
+                    Image("comIcon")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 40, height: 40)
+                        .clipShape(Circle())
+                        .overlay(Circle().stroke(style: StrokeStyle(lineWidth: 1)))
+                        .shadow(radius: 4)
+            }
+            .tag("campus_main")
                 UserAnnotation()
             }
             .mapControls {
@@ -100,7 +107,7 @@ struct CampusMapView: View {
         }
         .padding(12) // Increased internal padding of the card
         .background(.ultraThinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 36))
+        .clipShape(RoundedRectangle(cornerRadius: 28))
         .padding()
     }
 
