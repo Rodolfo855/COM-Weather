@@ -11,7 +11,16 @@ import MapKit
 struct CampusMapView: View {
     @Environment(\.dismiss) var dismiss
     
+    // Coordinates provided for the COM Building
     private let campusCenter = CLLocationCoordinate2D(latitude: 37.9555, longitude: -122.5497)
+    
+    // Helper to get the standard reset region
+    private var defaultRegion: MKCoordinateRegion {
+        MKCoordinateRegion(
+            center: campusCenter,
+            span: MKCoordinateSpan(latitudeDelta: 0.02, longitudeDelta: 0.02)
+        )
+    }
     
     @State private var position: MapCameraPosition = .region(
         MKCoordinateRegion(
@@ -25,25 +34,44 @@ struct CampusMapView: View {
 
     var body: some View {
         NavigationStack {
-            Map(position: $position, selection: $selectedMarkerID) {
-                Annotation("COM Building", coordinate: campusCenter){
-                    Image("comIcon")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 40, height: 40)
+            ZStack(alignment: .topTrailing) {
+                Map(position: $position, selection: $selectedMarkerID) {
+                    Annotation("COM Building", coordinate: campusCenter) {
+                        Image("comIcon")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 40, height: 40)
+                            .clipShape(Circle())
+                            .overlay(Circle().stroke(lineWidth: 1))
+                            .shadow(radius: 4)
+                    }
+                    .tag("campus_main")
+                    
+                 
+                }
+                .mapControls {
+                    MapCompass()
+                    MapPitchToggle()
+                }
+                .mapStyle(.standard(elevation: .realistic, pointsOfInterest: .all))
+                
+                // --- CUSTOM RESET BUTTON (Replaces Location Button) ---
+                // This resets the camera to campus without requesting GPS
+                Button {
+                    withAnimation(.easeInOut(duration: 1.0)) {
+                        position = .region(defaultRegion)
+                    }
+                } label: {
+                    Image(systemName: "scope")
+                        .font(.title)
+                        .padding(15)
+                        .background(.ultraThinMaterial)
                         .clipShape(Circle())
-                        .overlay(Circle().stroke(style: StrokeStyle(lineWidth: 1)))
                         .shadow(radius: 4)
+                }
+                .padding(.top, 16)
+                .padding(.trailing, 16)
             }
-            .tag("campus_main")
-                UserAnnotation()
-            }
-            .mapControls {
-                MapUserLocationButton()
-                MapCompass()
-                MapPitchToggle()
-            }
-            .mapStyle(.standard(elevation: .realistic, pointsOfInterest: .all))
             .safeAreaInset(edge: .bottom) {
                 persistentActionCard
             }
@@ -60,12 +88,11 @@ struct CampusMapView: View {
 
     // MARK: - Persistent Action Card (Upsized)
     private var persistentActionCard: some View {
-        VStack(spacing: 20) { // Increased spacing between rows
+        VStack(spacing: 20) {
             HStack(spacing: 20) {
-                // BIGGER: Increased Look Around thumbnail size
                 if let lookAroundScene {
                     LookAroundPreview(initialScene: lookAroundScene)
-                        .frame(width: 140, height: 95) // Increased from 110x75
+                        .frame(width: 140, height: 95)
                         .clipShape(RoundedRectangle(cornerRadius: 16))
                 } else {
                     RoundedRectangle(cornerRadius: 16)
@@ -75,37 +102,35 @@ struct CampusMapView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
-                    // BIGGER: Title and Icon
                     HStack(spacing: 6) {
                         Text("College of Marin")
-                            .font(.title2) // Increased from .headline
+                            .font(.title2)
                             .fontWeight(.bold)
                         
                         Image(systemName: "mappin.and.ellipse")
-                            .font(.title3) // Increased from .subheadline
+                            .font(.title3)
                             .foregroundStyle(.red)
                     }
                     
                     Text("Kentfield Campus")
-                        .font(.headline) // Increased from .caption
+                        .font(.headline)
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
             }
             
-            // BIGGER: Larger button with more padding
             Button(action: openInMaps) {
                 Label("Get Directions", systemImage: "arrow.triangle.turn.up.right.diamond.fill")
-                    .font(.title3) // Increased from .headline
+                    .font(.title3)
                     .fontWeight(.bold)
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 18) // Increased padding
+                    .padding(.vertical, 18)
                     .background(Color.blue)
                     .foregroundColor(.white)
                     .clipShape(RoundedRectangle(cornerRadius: 24))
             }
         }
-        .padding(12) // Increased internal padding of the card
+        .padding(12)
         .background(.ultraThinMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 28))
         .padding()
