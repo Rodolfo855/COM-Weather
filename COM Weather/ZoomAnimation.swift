@@ -8,27 +8,30 @@
 import UIKit
 
 class ZoomAnimationViewController: UIViewController {
-    // Data passed from the clicked card
     var headline: String?
     var subheadline: String?
     var imageName: String?
+    
+    // New properties to hold the extra data from your JSON
+    var humidity: String?
+    var pressure: String?
+    var detailedDescription: String?
     
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .white
         setupLayout()
+    
     }
     
     private func setupLayout() {
         let iv = UIImageView(image: UIImage(named: imageName ?? "") ?? UIImage(systemName: "photo"))
         iv.contentMode = .scaleAspectFill
         iv.clipsToBounds = true
-        iv.layer.cornerRadius = 50
+        iv.layer.cornerRadius = 30
         
         let titleLabel = UILabel()
         titleLabel.text = headline
-        
-        // --- FIXED ROUNDED FONT LOGIC ---
         let baseFont = UIFont.systemFont(ofSize: 30, weight: .black)
         if let roundedDescriptor = baseFont.fontDescriptor.withDesign(.rounded) {
             titleLabel.font = UIFont(descriptor: roundedDescriptor, size: 30)
@@ -39,20 +42,22 @@ class ZoomAnimationViewController: UIViewController {
         let statusLabel = UILabel()
         statusLabel.text = subheadline
         statusLabel.textColor = .systemBlue
-        // FIXED: Using preferredFont for title2
         statusLabel.font = .preferredFont(forTextStyle: .title2)
         
+        // Detailed stats label using the new humidity and pressure data
+        let statsLabel = UILabel()
+        statsLabel.text = "Humidity: \(humidity ?? "--")  |  Pressure: \(pressure ?? "--")"
+        statsLabel.font = .systemFont(ofSize: 14, weight: .medium)
+        statsLabel.textColor = .black
+        statsLabel.backgroundColor = .white
+
         let descriptionLabel = UILabel()
-        descriptionLabel.text = """
-        This is a detailed view for \(headline ?? "this location"). 
-        
-        Developer: Victor Rosales - Test
-        """
+        descriptionLabel.text = detailedDescription
         descriptionLabel.numberOfLines = 0
         descriptionLabel.textColor = .darkGray
         descriptionLabel.font = .systemFont(ofSize: 16)
         
-        [iv, titleLabel, statusLabel, descriptionLabel].forEach {
+        [iv, titleLabel, statusLabel, statsLabel, descriptionLabel].forEach {
             $0.translatesAutoresizingMaskIntoConstraints = false
             view.addSubview($0)
         }
@@ -69,7 +74,10 @@ class ZoomAnimationViewController: UIViewController {
             statusLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 8),
             statusLabel.leadingAnchor.constraint(equalTo: titleLabel.leadingAnchor),
             
-            descriptionLabel.topAnchor.constraint(equalTo: statusLabel.bottomAnchor, constant: 20),
+            statsLabel.topAnchor.constraint(equalTo: statusLabel.bottomAnchor, constant: 8),
+            statsLabel.leadingAnchor.constraint(equalTo: titleLabel.leadingAnchor),
+
+            descriptionLabel.topAnchor.constraint(equalTo: statsLabel.bottomAnchor, constant: 20),
             descriptionLabel.leadingAnchor.constraint(equalTo: titleLabel.leadingAnchor),
             descriptionLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -25)
         ])

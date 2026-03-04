@@ -15,30 +15,80 @@ struct WeatherViewControllerWrapper: UIViewControllerRepresentable {
     func updateUIViewController(_ uiViewController: UINavigationController, context: Context) {}
 }
 
+struct WeatherEntry: Codable {
+    let locationName: String
+    let temperature: String
+    let humidity: String
+    let pressure: String
+    let timestamp: String
+    let imageName: String
+    let detailLocation: String
+    let description: String
+}
+
 class WeatherViewController: UIViewController {
+    var weatherEntries: [WeatherEntry] = []
     let scrollView = UIScrollView()
     let stackView = UIStackView()
-    
-    let weatherData = [
-        ("Kentfield Campus", "68°F - Sunny", "banner1", "New Building"),
-        ("Indian Valley", "64°F - Breeze", "sunny", "Organic Farm"),
-        ("Science Village", "67°F - Optimal", "image3", "Lab"),
-        ("Student Center", "70°F - Clear", "image4", "Bookstore"),
-        ("Performing Arts", "66°F - Cool", "image5", "Theater"),
-        ("Wellness Center", "69°F - Calm", "sunny", "Gymnasium")
-    ]
+    let activityIndicator = UIActivityIndicatorView(style: .large)
     
     override func viewDidLoad() {
         super.viewDidLoad()
         title = "Live Weather"
-        navigationItem.rightBarButtonItem = UIBarButtonItem(barButtonSystemItem: .done, target: self, action: #selector(dismissVC))
         view.backgroundColor = UIColor(white: 0.87, alpha: 1.0)
+        navigationItem.rightBarButtonItem = UIBarButtonItem(barButtonSystemItem: .done, target: self, action: #selector(dismissVC))
         setupLayout()
+        setupActivityIndicator()
+        loadRemoteWeatherData()
+    }
+    
+    func loadRemoteWeatherData() {
+        activityIndicator.startAnimating()
+        let urlString = "https://raw.githubusercontent.com/Rodolfo855/ContentManagementSystem/main/news/weather%2Cjson"
+        guard let url = URL(string: urlString) else { return }
+        var request = URLRequest(url: url)
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+        request.timeoutInterval = 10.0
+        URLSession.shared.dataTask(with: url) { [weak self] data, _, error in
+            DispatchQueue.main.async {
+                self?.activityIndicator.stopAnimating()
+            }
+            if let data = data {
+                do {
+                    let decodedData = try JSONDecoder().decode([WeatherEntry].self, from: data)
+                    DispatchQueue.main.async {
+                        self?.weatherEntries = decodedData
+                        self?.refreshUI()
+                    }
+                } catch {
+                    print("JSON Decoding Error: \(error)")
+                }
+            }
+        }.resume()
+    }
+
+    private func setupActivityIndicator() {
+        activityIndicator.translatesAutoresizingMaskIntoConstraints = false
+        activityIndicator.hidesWhenStopped = true
+        activityIndicator.color = .systemBlue
+        view.addSubview(activityIndicator)
+        NSLayoutConstraint.activate([
+            activityIndicator.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            activityIndicator.centerYAnchor.constraint(equalTo: view.centerYAnchor)
+        ])
+    }
+
+    private func refreshUI() {
+        stackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
         
-        for (index, item) in weatherData.enumerated() {
-            let card = createWeatherCard(title: item.0, subtext: item.1, imgName: item.2, locLabel: item.3)
+        for (index, entry) in weatherEntries.enumerated() {
+            let card = createWeatherCard(
+                title: entry.locationName,
+                subtext: "\(entry.temperature) - \(entry.timestamp)",
+                imgName: entry.imageName,
+                locLabel: entry.detailLocation
+            )
             
-            // --- ZOOM INTEGRATION ---
             card.tag = index
             let tap = UITapGestureRecognizer(target: self, action: #selector(handleZoomTap(_:)))
             card.addGestureRecognizer(tap)
@@ -52,12 +102,17 @@ class WeatherViewController: UIViewController {
     
     @objc func handleZoomTap(_ gesture: UITapGestureRecognizer) {
         guard let tag = gesture.view?.tag else { return }
-        let data = weatherData[tag]
+        let data = weatherEntries[tag]
         
         let zoomVC = ZoomAnimationViewController()
-        zoomVC.headline = data.0
-        zoomVC.subheadline = data.1
-        zoomVC.imageName = data.2
+        zoomVC.headline = data.locationName
+        zoomVC.subheadline = data.temperature
+        zoomVC.imageName = data.imageName
+        
+        // Passing the new dynamic fields to the detail view
+        zoomVC.humidity = data.humidity
+        zoomVC.pressure = data.pressure
+        zoomVC.detailedDescription = data.description
         
         if let sheet = zoomVC.sheetPresentationController {
             sheet.detents = [.medium(), .large()]
@@ -103,7 +158,6 @@ class WeatherViewController: UIViewController {
         let iv = UIImageView(image: UIImage(named: imgName) ?? UIImage(systemName: "photo"))
         iv.contentMode = .scaleAspectFill; iv.clipsToBounds = true; iv.layer.cornerRadius = 15
         
-        // --- PRO OVERLAY: PIN ICON + TEXT ---
         let pinIcon = UIImageView(image: UIImage(systemName: "mappin.and.ellipse"))
         pinIcon.tintColor = .white
         pinIcon.preferredSymbolConfiguration = .init(pointSize: 10, weight: .bold)
@@ -118,13 +172,11 @@ class WeatherViewController: UIViewController {
         
         let locBlur = UIVisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterialDark))
         locBlur.layer.cornerRadius = 8; locBlur.clipsToBounds = true
-        // ------------------------------------
 
         let tLabel = UILabel(); tLabel.text = title; tLabel.font = .boldSystemFont(ofSize: 22)
         tLabel.textColor = .black
         let sLabel = UILabel(); sLabel.text = subtext; sLabel.textColor = .systemBlue
-        
-        // ADD HIERARCHY
+
         [shadowContainer, tLabel, sLabel].forEach {
             $0.translatesAutoresizingMaskIntoConstraints = false
             card.addSubview($0)
@@ -146,8 +198,6 @@ class WeatherViewController: UIViewController {
             iv.trailingAnchor.constraint(equalTo: shadowContainer.trailingAnchor),
             iv.bottomAnchor.constraint(equalTo: shadowContainer.bottomAnchor),
             
-            // --- FIXED: BOTTOM LEFT ALIGNED OVERLAY ---
-            // Pin the bottom of the blur to the bottom of the image (with 12pt padding)
             locBlur.bottomAnchor.constraint(equalTo: iv.bottomAnchor, constant: -12),
             locBlur.leadingAnchor.constraint(equalTo: iv.leadingAnchor, constant: 12),
             
@@ -159,7 +209,6 @@ class WeatherViewController: UIViewController {
             
             locBlur.widthAnchor.constraint(equalTo: hStack.widthAnchor, constant: 16),
             locBlur.heightAnchor.constraint(equalTo: hStack.heightAnchor, constant: 10),
-            // ------------------------------------------
             
             tLabel.topAnchor.constraint(equalTo: shadowContainer.bottomAnchor, constant: 12),
             tLabel.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 15),

@@ -88,12 +88,12 @@ class NewsletterViewController: UIViewController, UITableViewDataSource, UITable
         let cell = tableView.dequeueReusableCell(withIdentifier: "FeedCell", for: indexPath) as! FeedCell
         let i = items[indexPath.row]
         
-        // 1. Reset cell state immediately (fixes the "sticking" thumbnail bug)
+
         cell.updateImage(UIImage(systemName: "video.circle.fill"))
         
         if i.0 == "video" {
             fetchThumbnail(for: i.4) { thumbnail in
-                // 2. Only update if the cell is still visible for this index
+            
                 if let currentCell = tableView.cellForRow(at: indexPath) as? FeedCell {
                     currentCell.updateImage(thumbnail)
                 }
@@ -132,7 +132,7 @@ class NewsletterViewController: UIViewController, UITableViewDataSource, UITable
             print("Audio Error: \(error)")
         }
 
-        // 1. Try Specific Video
+       
         if let videoURL = Bundle.main.url(forResource: name, withExtension: "mp4") {
             self.executePlayback(with: videoURL)
         }

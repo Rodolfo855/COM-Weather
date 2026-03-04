@@ -10,17 +10,9 @@ import MapKit
 
 struct CampusMapView: View {
     @Environment(\.dismiss) var dismiss
+    @Namespace var mapScope 
     
-    // Coordinates provided for the COM Building
     private let campusCenter = CLLocationCoordinate2D(latitude: 37.9555, longitude: -122.5497)
-    
-    // Helper to get the standard reset region
-    private var defaultRegion: MKCoordinateRegion {
-        MKCoordinateRegion(
-            center: campusCenter,
-            span: MKCoordinateSpan(latitudeDelta: 0.02, longitudeDelta: 0.02)
-        )
-    }
     
     @State private var position: MapCameraPosition = .region(
         MKCoordinateRegion(
@@ -35,7 +27,7 @@ struct CampusMapView: View {
     var body: some View {
         NavigationStack {
             ZStack(alignment: .topTrailing) {
-                Map(position: $position, selection: $selectedMarkerID) {
+                Map(position: $position, selection: $selectedMarkerID, scope: mapScope) {
                     Annotation("COM Building", coordinate: campusCenter) {
                         Image("comIcon")
                             .resizable()
@@ -46,28 +38,36 @@ struct CampusMapView: View {
                             .shadow(radius: 4)
                     }
                     .tag("campus_main")
-                    
-                 
-                }
-                .mapControls {
-                    MapCompass()
-                    MapPitchToggle()
                 }
                 .mapStyle(.standard(elevation: .realistic, pointsOfInterest: .all))
+                .mapControlVisibility(.hidden)
                 
-                // --- CUSTOM RESET BUTTON (Replaces Location Button) ---
-                // This resets the camera to campus without requesting GPS
-                Button {
-                    withAnimation(.easeInOut(duration: 1.0)) {
-                        position = .region(defaultRegion)
+                
+                VStack(spacing: 12) {
+                   
+                    Button {
+                        withAnimation(.easeInOut(duration: 1.0)) {
+                            position = .region(MKCoordinateRegion(center: campusCenter, span: MKCoordinateSpan(latitudeDelta: 0.02, longitudeDelta: 0.02)))
+                        }
+                    } label: {
+                        Image(systemName: "scope")
+                            .font(.title)
+                            .fontWeight(.bold)
+                            .padding(15)
+                            .background(.ultraThinMaterial)
+                            .clipShape(Circle())
+                            .shadow(radius: 4)
                     }
-                } label: {
-                    Image(systemName: "scope")
-                        .font(.title)
-                        .padding(15)
+                    
+                   
+                    MapPitchToggle(scope: mapScope)
                         .background(.ultraThinMaterial)
                         .clipShape(Circle())
-                        .shadow(radius: 4)
+                    
+                   
+                    MapCompass(scope: mapScope)
+                        .background(.ultraThinMaterial)
+                        .clipShape(Circle())
                 }
                 .padding(.top, 16)
                 .padding(.trailing, 16)
@@ -82,11 +82,11 @@ struct CampusMapView: View {
                     Button("Done") { dismiss() }.fontWeight(.semibold)
                 }
             }
+            .mapScope(mapScope)
             .onAppear { fetchLookAround() }
         }
     }
 
-    // MARK: - Persistent Action Card (Upsized)
     private var persistentActionCard: some View {
         VStack(spacing: 20) {
             HStack(spacing: 20) {
@@ -106,34 +106,23 @@ struct CampusMapView: View {
                         Text("College of Marin")
                             .font(.title2)
                             .fontWeight(.bold)
-                        
                         Image(systemName: "mappin.and.ellipse")
                             .font(.title3)
                             .foregroundStyle(.red)
                     }
-                    
-                    Text("Kentfield Campus")
-                        .font(.headline)
-                        .foregroundStyle(.secondary)
+                    Text("Kentfield Campus").font(.headline).foregroundStyle(.secondary)
                 }
                 Spacer()
             }
             
             Button(action: openInMaps) {
                 Label("Get Directions", systemImage: "arrow.triangle.turn.up.right.diamond.fill")
-                    .font(.title3)
-                    .fontWeight(.bold)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 18)
-                    .background(Color.blue)
-                    .foregroundColor(.white)
+                    .font(.title3).fontWeight(.bold).frame(maxWidth: .infinity)
+                    .padding(.vertical, 18).background(Color.blue).foregroundColor(.white)
                     .clipShape(RoundedRectangle(cornerRadius: 24))
             }
         }
-        .padding(12)
-        .background(.ultraThinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 28))
-        .padding()
+        .padding(12).background(.ultraThinMaterial).clipShape(RoundedRectangle(cornerRadius: 28)).padding()
     }
 
     func fetchLookAround() {
