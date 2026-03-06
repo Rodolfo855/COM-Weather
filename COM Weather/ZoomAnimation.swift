@@ -2,57 +2,85 @@
 //  ZoomAnimation.swift
 //  COM Weather
 //
-//  Created by Victor Rosales  on 2/15/26.
+//  Created by Victor Rosales on 2/15/26.
 //
-    
+
 import UIKit
 
 class ZoomAnimationViewController: UIViewController {
+    // MARK: - Data Properties
     var headline: String?
     var subheadline: String?
     var imageName: String?
-    
-    // New properties to hold the extra data from your JSON
     var humidity: String?
     var pressure: String?
     var detailedDescription: String?
     
+    // Fix: Added missing property for the WeatherViewController to access
+    var statusLabelFont: UIFont?
+
+    // UI Components
+    private let iv = UIImageView()
+    private let titleLabel = UILabel()
+    private let statusLabel = UILabel()
+    private let statsLabel = UILabel()
+    private let descriptionLabel = UILabel()
+
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .white
         setupLayout()
+        updateUI() // Load data into labels
+    }
     
+    // Fix: Added missing updateUI method
+    func updateUI() {
+        loadViewIfNeeded()
+        iv.image = UIImage(named: imageName ?? "") ?? UIImage(systemName: "photo")
+        titleLabel.text = headline
+        statusLabel.text = subheadline
+        
+        // Handle stats display only if data exists (Weather vs Newsletter)
+        if let h = humidity, let p = pressure {
+            statsLabel.text = "Humidity: \(h) | Pressure: \(p)"
+            statsLabel.isHidden = false
+        } else {
+            statsLabel.isHidden = true
+        }
+        
+        descriptionLabel.text = detailedDescription
+        
+        // Fix: Properly apply the font if it was passed, otherwise use default
+        if let customFont = statusLabelFont {
+            statusLabel.font = customFont
+        }
     }
     
     private func setupLayout() {
-        let iv = UIImageView(image: UIImage(named: imageName ?? "") ?? UIImage(systemName: "photo"))
+        // Fix: Corrected Rounded Font Syntax for Title
+        let titleBase = UIFont.systemFont(ofSize: 30, weight: .black)
+        if let roundedTitle = titleBase.fontDescriptor.withDesign(.rounded) {
+            titleLabel.font = UIFont(descriptor: roundedTitle, size: 30)
+        } else {
+            titleLabel.font = titleBase
+        }
+        
+        // Fix: Corrected Rounded Font Syntax for Status
+        let statusBase = UIFont.preferredFont(forTextStyle: .title2)
+        if let roundedStatus = statusBase.fontDescriptor.withDesign(.rounded) {
+            statusLabel.font = UIFont(descriptor: roundedStatus, size: statusBase.pointSize)
+        } else {
+            statusLabel.font = statusBase
+        }
+
         iv.contentMode = .scaleAspectFill
         iv.clipsToBounds = true
         iv.layer.cornerRadius = 30
         
-        let titleLabel = UILabel()
-        titleLabel.text = headline
-        let baseFont = UIFont.systemFont(ofSize: 30, weight: .black)
-        if let roundedDescriptor = baseFont.fontDescriptor.withDesign(.rounded) {
-            titleLabel.font = UIFont(descriptor: roundedDescriptor, size: 30)
-        } else {
-            titleLabel.font = baseFont
-        }
-        
-        let statusLabel = UILabel()
-        statusLabel.text = subheadline
         statusLabel.textColor = .systemBlue
-        statusLabel.font = .preferredFont(forTextStyle: .title2)
-        
-        // Detailed stats label using the new humidity and pressure data
-        let statsLabel = UILabel()
-        statsLabel.text = "Humidity: \(humidity ?? "--")  |  Pressure: \(pressure ?? "--")"
         statsLabel.font = .systemFont(ofSize: 14, weight: .medium)
         statsLabel.textColor = .black
-        statsLabel.backgroundColor = .white
-
-        let descriptionLabel = UILabel()
-        descriptionLabel.text = detailedDescription
+        
         descriptionLabel.numberOfLines = 0
         descriptionLabel.textColor = .darkGray
         descriptionLabel.font = .systemFont(ofSize: 16)
@@ -70,6 +98,7 @@ class ZoomAnimationViewController: UIViewController {
             
             titleLabel.topAnchor.constraint(equalTo: iv.bottomAnchor, constant: 25),
             titleLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 25),
+            titleLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -25),
             
             statusLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 8),
             statusLabel.leadingAnchor.constraint(equalTo: titleLabel.leadingAnchor),

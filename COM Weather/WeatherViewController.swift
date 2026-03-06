@@ -434,14 +434,14 @@ class WeatherViewController: UIViewController, UIScrollViewDelegate {
     
     func animateWeatherCardAppearance(for card: UIView, delay: TimeInterval) {
         card.alpha = 0
-      
-        card.transform = CGAffineTransform(translationX: 0, y: 60).scaledBy(x: 0.85, y: 0.85)  // Larger movement and smaller starting size
+        card.transform = CGAffineTransform(translationX: 0, y: 60).scaledBy(x: 0.85, y: 0.85)
         
         UIView.animate(withDuration: 1.0, delay: delay, usingSpringWithDamping: 0.6, initialSpringVelocity: 0.8, options: .curveEaseOut) {
-            card.alpha = 1  // Fade-in
-            card.transform = .identity  // Slide up to original position and scale to normal size
+            card.alpha = 1
+            card.transform = .identity
         }
     }
+    
     func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
         let pullDistance = (scrollView.contentOffset.y + scrollView.frame.size.height) - scrollView.contentSize.height
         if pullDistance > triggerThreshold && !isFetching {
@@ -455,6 +455,38 @@ class WeatherViewController: UIViewController, UIScrollViewDelegate {
         lastSyncedLabel.text = "Last Synced: \(formatter.string(from: Date()))"
     }
 
-    @objc func handleZoomTap(_ gesture: UITapGestureRecognizer) {}
+    // MARK: - FIXED ZOOM IMPLEMENTATION (Consistent with Newsletter)
+    @objc func handleZoomTap(_ gesture: UITapGestureRecognizer) {
+        guard let tappedView = gesture.view, tappedView.tag < weatherEntries.count else { return }
+        let entry = weatherEntries[tappedView.tag]
+        
+        // Use the Sheet Presentation logic from NewsletterViewController
+        let zoomVC = ZoomAnimationViewController()
+        zoomVC.headline = entry.locationName
+        zoomVC.subheadline = "\(entry.temperature) • \(entry.timestamp)"
+        zoomVC.imageName = entry.imageName
+        zoomVC.humidity = entry.humidity
+        zoomVC.pressure = entry.pressure
+        zoomVC.detailedDescription = entry.description
+        
+        // Pass the corrected rounded font descriptor fix
+        let baseFont = UIFont.systemFont(ofSize: 18, weight: .bold)
+        if let roundedDescriptor = baseFont.fontDescriptor.withDesign(.rounded) {
+             zoomVC.statusLabelFont = UIFont(descriptor: roundedDescriptor, size: 18)
+        } else {
+             zoomVC.statusLabelFont = baseFont
+        }
+        
+        zoomVC.updateUI()
+
+        // Apply native sheet detents as used in the Campus Feed
+        if let sheet = zoomVC.sheetPresentationController {
+            sheet.detents = [.medium(), .large()]
+            sheet.prefersGrabberVisible = true
+        }
+        
+        present(zoomVC, animated: true)
+    }
+    
     @objc func dismissVC() { dismiss(animated: true) }
 }
