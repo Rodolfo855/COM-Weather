@@ -41,7 +41,6 @@ class WeatherViewController: UIViewController, UIScrollViewDelegate {
     var isFetching = false
     var hasTriggeredHaptic = false
     
-    // MARK: - TUNING VALUES (Modify these to change behavior)
     let triggerThreshold: CGFloat = 120.0
     let minAnimationTime: Double = 3.0
     let fetchTimeout: Double = 5.0
@@ -50,11 +49,9 @@ class WeatherViewController: UIViewController, UIScrollViewDelegate {
     let activeColor: UIColor = .systemOrange
     let successColor: UIColor = .systemGreen
     
-    // PADDING CONTROLS
-    let footerHeight: CGFloat = 80.0        // Height of the refresh zone
-    let stackSpacing: CGFloat = 12.0        // Gap between weather cards
-    let bottomContentInset: CGFloat = 5.0   // Space at the very bottom edge
-    // -------------------------
+    let footerHeight: CGFloat = 80.0
+    let stackSpacing: CGFloat = 12.0
+    let bottomContentInset: CGFloat = 5.0
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -68,10 +65,8 @@ class WeatherViewController: UIViewController, UIScrollViewDelegate {
         
         setupLayout()
         setupActivityIndicator()
-        loadRemoteWeatherData()
+        loadRemoteWeatherData(isManual: false)
     }
-    
-    // MARK: - Scroll Logic
     
     func scrollViewDidScroll(_ scrollView: UIScrollView) {
         let offset = scrollView.contentOffset.y
@@ -90,7 +85,7 @@ class WeatherViewController: UIViewController, UIScrollViewDelegate {
                 }
             }
         } else if !isFetching {
-            pullUpLabel.text = "FETCH SERVER DATA"
+            pullUpLabel.text = "PULL UP FOR FRESH DATA"
             pullUpLabel.font = .systemFont(ofSize: 15, weight: .black)
             pullUpLabel.textColor = hintColor
             pullUpLabel.transform = .identity
@@ -105,24 +100,27 @@ class WeatherViewController: UIViewController, UIScrollViewDelegate {
         let pullDistance = (offset + frameHeight) - contentHeight
         
         if pullDistance > triggerThreshold && !isFetching {
-            // Smoothly lock the scrollview open during fetch
             UIView.animate(withDuration: 0.3, delay: 0, options: .curveEaseOut) {
                 scrollView.contentInset.bottom = self.footerHeight
             }
-            loadRemoteWeatherData()
+            loadRemoteWeatherData(isManual: true)
         }
     }
     
-    func loadRemoteWeatherData() {
+    func loadRemoteWeatherData(isManual: Bool = false) {
         guard !isFetching else { return }
         isFetching = true
         
         let startTime = Date()
         
         DispatchQueue.main.async {
-            self.pullUpSpinner.startAnimating()
-            self.pullUpLabel.text = "FETCHING..."
-            self.pullUpLabel.textColor = self.successColor
+            if isManual {
+                self.pullUpSpinner.startAnimating()
+                self.pullUpLabel.text = "FETCHING..."
+                self.pullUpLabel.textColor = self.successColor
+            } else {
+                self.activityIndicator.startAnimating()
+            }
         }
         
         let urlString = "https://raw.githubusercontent.com/Rodolfo855/ContentManagementSystem/main/news/weather%2Cjson?v=\(Date().timeIntervalSince1970)"
@@ -133,10 +131,10 @@ class WeatherViewController: UIViewController, UIScrollViewDelegate {
         
         URLSession.shared.dataTask(with: request) { [weak self] data, _, error in
             let elapsed = Date().timeIntervalSince(startTime)
-            let remainingDelay = max(0, (self?.minAnimationTime ?? 3.0) - elapsed)
+            let requiredDelay = isManual ? (self?.minAnimationTime ?? 3.0) : 0.0
+            let remainingDelay = max(0, requiredDelay - elapsed)
             
             DispatchQueue.main.asyncAfter(deadline: .now() + remainingDelay) {
-                // Smoothly release the scrollview lock
                 UIView.animate(withDuration: 0.5, delay: 0, usingSpringWithDamping: 0.7, initialSpringVelocity: 0.5, options: .curveEaseInOut) {
                     self?.scrollView.contentInset.bottom = 0
                 }
@@ -238,7 +236,7 @@ class WeatherViewController: UIViewController, UIScrollViewDelegate {
         footerContainer.spacing = 2
         footerContainer.alignment = .center
         
-        pullUpLabel.font = .systemFont(ofSize: 12, weight: .black)
+        pullUpLabel.font = .systemFont(ofSize: 15, weight: .black)
         pullUpLabel.textColor = hintColor
         pullUpLabel.text = "PULL UP FOR FRESH DATA"
         
