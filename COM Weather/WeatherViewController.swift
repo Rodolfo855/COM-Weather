@@ -21,9 +21,10 @@ struct WeatherViewControllerWrapper: UIViewControllerRepresentable {
     func updateUIViewController(_ uiViewController: UINavigationController, context: Context) {}
 }
 
-// MARK: - 3. iOS 26 Liquid Glass Component
+// MARK: - 3. iOS 26 Liquid Glass Component (Updated for Error State)
 struct iOS26GlassSpinner: View {
     @Binding var isFinished: Bool
+    @Binding var isError: Bool
     @State private var rotation: Double = 0
     @State private var isPulsing: Bool = false
     
@@ -39,7 +40,7 @@ struct iOS26GlassSpinner: View {
                     )
                     .shadow(color: Color.black.opacity(0.15), radius: 20, x: 0, y: 10)
 
-                if !isFinished {
+                if !isFinished && !isError {
                     Circle()
                         .trim(from: 0, to: 0.7)
                         .stroke(
@@ -54,6 +55,12 @@ struct iOS26GlassSpinner: View {
                             }
                         }
                         .transition(.scale.combined(with: .opacity))
+                } else if isError {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 40, weight: .bold))
+                        .foregroundStyle(LinearGradient(colors: [.red, .orange], startPoint: .topLeading, endPoint: .bottomTrailing))
+                        .symbolEffect(.bounce, value: isError)
+                        .transition(.scale.combined(with: .opacity))
                 } else {
                     Image(systemName: "checkmark")
                         .font(.system(size: 40, weight: .bold))
@@ -63,17 +70,11 @@ struct iOS26GlassSpinner: View {
                 }
             }
             
-            Text(isFinished ? "DONE" : "FETCHING LIVE DATA")
+            Text(isError ? "CONNECTION FAILED" : (isFinished ? "DONE" : "FETCHING LIVE DATA"))
                 .font(.system(size: 13, weight: .black, design: .rounded))
                 .kerning(2.5)
-                .foregroundStyle(Color.black.opacity(0.7))
-                .opacity(isPulsing && !isFinished ? 0.4 : 0.9)
-                .scaleEffect(isPulsing && !isFinished ? 0.96 : 1.0)
-                .id("LoadingText" + String(isFinished))
-                .transition(.asymmetric(
-                    insertion: .opacity.combined(with: .move(edge: .bottom)),
-                    removal: .opacity.combined(with: .move(edge: .top))
-                ))
+                .foregroundStyle(isError ? Color.red.opacity(0.8) : Color.black.opacity(0.7))
+                .id("StatusText" + String(isFinished) + String(isError))
                 .onAppear {
                     withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true)) {
                         isPulsing = true
@@ -81,6 +82,7 @@ struct iOS26GlassSpinner: View {
                 }
         }
         .animation(.spring(response: 0.6, dampingFraction: 0.7), value: isFinished)
+        .animation(.spring(response: 0.6, dampingFraction: 0.7), value: isError)
     }
 }
 
@@ -126,7 +128,8 @@ class SkeletonCardView: UIView {
 
 // MARK: - 5. UIKit Bridge for Spinner
 class ModernSpinnerController: UIView {
-    private var isFinished = false { didSet { updateView() } }
+    var isFinished = false { didSet { updateView() } }
+    var isError = false { didSet { updateView() } }
     private var hostingController: UIHostingController<iOS26GlassSpinner>?
 
     override init(frame: CGRect) {
@@ -137,8 +140,7 @@ class ModernSpinnerController: UIView {
     required init?(coder: NSCoder) { super.init(coder: coder); setupView() }
 
     private func setupView() {
-        let spinner = iOS26GlassSpinner(isFinished: .init(get: { self.isFinished }, set: { self.isFinished = $0 }))
-        hostingController = UIHostingController(rootView: spinner)
+        updateView()
         guard let hc = hostingController else { return }
         hc.view.backgroundColor = .clear
         hc.view.translatesAutoresizingMaskIntoConstraints = false
@@ -153,11 +155,23 @@ class ModernSpinnerController: UIView {
     
     func showSuccess(completion: @escaping () -> Void) {
         isFinished = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-            UIView.animate(withDuration: 0.6, delay: 0, options: .curveEaseInOut) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            UIView.animate(withDuration: 0.6, animations: {
                 self.alpha = 0
                 self.transform = CGAffineTransform(scaleX: 0.9, y: 0.9)
-            } completion: { _ in
+            }) { _ in
+                self.isHidden = true
+                completion()
+            }
+        }
+    }
+
+    func showError(completion: @escaping () -> Void) {
+        isError = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            UIView.animate(withDuration: 0.6, animations: {
+                self.alpha = 0
+            }) { _ in
                 self.isHidden = true
                 completion()
             }
@@ -166,13 +180,23 @@ class ModernSpinnerController: UIView {
     
     func reset() {
         isFinished = false
+        isError = false
         self.alpha = 1
         self.transform = .identity
         self.isHidden = false
+        updateView()
     }
     
     private func updateView() {
-        hostingController?.rootView = iOS26GlassSpinner(isFinished: .init(get: { self.isFinished }, set: { self.isFinished = $0 }))
+        let spinner = iOS26GlassSpinner(
+            isFinished: .init(get: { self.isFinished }, set: { self.isFinished = $0 }),
+            isError: .init(get: { self.isError }, set: { self.isError = $0 })
+        )
+        if hostingController == nil {
+            hostingController = UIHostingController(rootView: spinner)
+        } else {
+            hostingController?.rootView = spinner
+        }
     }
 }
 
@@ -193,7 +217,7 @@ class WeatherViewController: UIViewController, UIScrollViewDelegate {
     var hasTriggeredHaptic = false
     
     let triggerThreshold: CGFloat = 120.0
-    let minAnimationTime: Double = 3.5
+    let minAnimationTime: Double = 2.0
     let footerHeight: CGFloat = 80.0
     
     let spinnerColor: UIColor = .systemPink
@@ -214,7 +238,7 @@ class WeatherViewController: UIViewController, UIScrollViewDelegate {
     
     private func setupModernSpinner() {
         modernSpinner.translatesAutoresizingMaskIntoConstraints = false
-        modernSpinner.isHidden = true
+        modernSpinner.isHidden = false
         view.addSubview(modernSpinner)
         NSLayoutConstraint.activate([
             modernSpinner.centerXAnchor.constraint(equalTo: view.centerXAnchor),
@@ -258,20 +282,46 @@ class WeatherViewController: UIViewController, UIScrollViewDelegate {
             let remainingDelay = max(0, (self?.minAnimationTime ?? 3.5) - elapsed)
             
             DispatchQueue.main.asyncAfter(deadline: .now() + remainingDelay) {
-                if !isManual && data != nil {
-                    UINotificationFeedbackGenerator().notificationOccurred(.success)
-                    self?.modernSpinner.showSuccess {
-                        self?.completeDataProcessing(data: data, error: error)
+                if let data = data, let decoded = try? JSONDecoder().decode([WeatherEntry].self, from: data) {
+                    // SUCCESS
+                    if !isManual {
+                        UINotificationFeedbackGenerator().notificationOccurred(.success)
+                        self?.modernSpinner.showSuccess {
+                            self?.completeDataProcessing(data: data, decoded: decoded)
+                        }
+                    } else {
+                        self?.completeDataProcessing(data: data, decoded: decoded)
                     }
                 } else {
-                    self?.modernSpinner.isHidden = true
-                    self?.completeDataProcessing(data: data, error: error)
+                    // ERROR
+                    if !isManual {
+                        UINotificationFeedbackGenerator().notificationOccurred(.error)
+                        self?.modernSpinner.showError {
+                            self?.dismiss(animated: true)
+                        }
+                    } else {
+                        self?.isFetching = false
+                        self?.showPullUpErrorAlert()
+                    }
                 }
             }
         }.resume()
     }
 
-    private func completeDataProcessing(data: Data?, error: Error?) {
+    private func showPullUpErrorAlert() {
+        self.pullUpSpinner.stopAnimating()
+        self.pullUpLabel.text = "PULL UP FOR FRESH DATA"
+        self.pullUpLabel.font = .systemFont(ofSize: 14, weight: .black)
+        self.pullUpLabel.textColor = self.hintColor
+        
+        UIView.animate(withDuration: 0.3) { self.scrollView.contentInset.bottom = 0 }
+
+        let alert = UIAlertController(title: "Connection Error", message: "Couldn't fetch new weather data. Please try again later.", preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        self.present(alert, animated: true)
+    }
+
+    private func completeDataProcessing(data: Data?, decoded: [WeatherEntry]?) {
         UIView.animate(withDuration: 0.5) { self.scrollView.contentInset.bottom = 0 }
         self.isFetching = false
         self.pullUpSpinner.stopAnimating()
@@ -280,7 +330,7 @@ class WeatherViewController: UIViewController, UIScrollViewDelegate {
         self.pullUpLabel.font = .systemFont(ofSize: 14, weight: .black)
         self.pullUpLabel.textColor = self.hintColor
         
-        if let data = data, let decoded = try? JSONDecoder().decode([WeatherEntry].self, from: data) {
+        if let decoded = decoded {
             self.weatherEntries = decoded
             self.updateLastSyncedTimestamp()
             self.refreshUI()
@@ -455,12 +505,10 @@ class WeatherViewController: UIViewController, UIScrollViewDelegate {
         lastSyncedLabel.text = "Last Synced: \(formatter.string(from: Date()))"
     }
 
-    // MARK: - FIXED ZOOM IMPLEMENTATION (Consistent with Newsletter)
     @objc func handleZoomTap(_ gesture: UITapGestureRecognizer) {
         guard let tappedView = gesture.view, tappedView.tag < weatherEntries.count else { return }
         let entry = weatherEntries[tappedView.tag]
         
-        // Use the Sheet Presentation logic from NewsletterViewController
         let zoomVC = ZoomAnimationViewController()
         zoomVC.headline = entry.locationName
         zoomVC.subheadline = "\(entry.temperature) • \(entry.timestamp)"
@@ -469,7 +517,6 @@ class WeatherViewController: UIViewController, UIScrollViewDelegate {
         zoomVC.pressure = entry.pressure
         zoomVC.detailedDescription = entry.description
         
-        // Pass the corrected rounded font descriptor fix
         let baseFont = UIFont.systemFont(ofSize: 18, weight: .bold)
         if let roundedDescriptor = baseFont.fontDescriptor.withDesign(.rounded) {
              zoomVC.statusLabelFont = UIFont(descriptor: roundedDescriptor, size: 18)
@@ -477,9 +524,6 @@ class WeatherViewController: UIViewController, UIScrollViewDelegate {
              zoomVC.statusLabelFont = baseFont
         }
         
-        zoomVC.updateUI()
-
-        // Apply native sheet detents as used in the Campus Feed
         if let sheet = zoomVC.sheetPresentationController {
             sheet.detents = [.medium(), .large()]
             sheet.prefersGrabberVisible = true
