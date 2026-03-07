@@ -155,7 +155,7 @@ class ModernSpinnerController: UIView {
     
     func showSuccess(completion: @escaping () -> Void) {
         isFinished = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
             UIView.animate(withDuration: 0.6, animations: {
                 self.alpha = 0
                 self.transform = CGAffineTransform(scaleX: 0.9, y: 0.9)
@@ -215,9 +215,10 @@ class WeatherViewController: UIViewController, UIScrollViewDelegate {
     
     var isFetching = false
     var hasTriggeredHaptic = false
+    var isShowingUpToDate = false
     
     let triggerThreshold: CGFloat = 120.0
-    let minAnimationTime: Double = 2.0
+    let minAnimationTime: Double = 1.0
     let footerHeight: CGFloat = 80.0
     
     let spinnerColor: UIColor = .systemPink
@@ -283,7 +284,6 @@ class WeatherViewController: UIViewController, UIScrollViewDelegate {
             
             DispatchQueue.main.asyncAfter(deadline: .now() + remainingDelay) {
                 if let data = data, let decoded = try? JSONDecoder().decode([WeatherEntry].self, from: data) {
-                    // SUCCESS
                     if !isManual {
                         UINotificationFeedbackGenerator().notificationOccurred(.success)
                         self?.modernSpinner.showSuccess {
@@ -293,7 +293,6 @@ class WeatherViewController: UIViewController, UIScrollViewDelegate {
                         self?.completeDataProcessing(data: data, decoded: decoded)
                     }
                 } else {
-                    // ERROR
                     if !isManual {
                         UINotificationFeedbackGenerator().notificationOccurred(.error)
                         self?.modernSpinner.showError {
@@ -310,9 +309,9 @@ class WeatherViewController: UIViewController, UIScrollViewDelegate {
 
     private func showPullUpErrorAlert() {
         self.pullUpSpinner.stopAnimating()
-        self.pullUpLabel.text = "PULL UP FOR FRESH DATA"
+        self.pullUpLabel.text = "COULD NOT FETCH DATA!"
         self.pullUpLabel.font = .systemFont(ofSize: 14, weight: .black)
-        self.pullUpLabel.textColor = self.hintColor
+        self.pullUpLabel.textColor = .red
         
         UIView.animate(withDuration: 0.3) { self.scrollView.contentInset.bottom = 0 }
 
@@ -326,9 +325,21 @@ class WeatherViewController: UIViewController, UIScrollViewDelegate {
         self.isFetching = false
         self.pullUpSpinner.stopAnimating()
         
-        self.pullUpLabel.text = "PULL UP FOR FRESH DATA"
+        self.isShowingUpToDate = true
+        self.pullUpLabel.text = "UP TO DATE!"
         self.pullUpLabel.font = .systemFont(ofSize: 14, weight: .black)
-        self.pullUpLabel.textColor = self.hintColor
+        self.pullUpLabel.textColor = .systemCyan
+        
+        self.view.layoutIfNeeded()
+        
+        let spring = CASpringAnimation(keyPath: "transform.translation.y")
+        spring.fromValue = 100
+        spring.toValue = 0
+        spring.damping = 3.0
+        spring.initialVelocity = 5.0
+        spring.duration = spring.settlingDuration
+        
+        self.pullUpLabel.layer.add(spring, forKey: "springJump")
         
         if let decoded = decoded {
             self.weatherEntries = decoded
@@ -456,13 +467,31 @@ class WeatherViewController: UIViewController, UIScrollViewDelegate {
     
     func scrollViewDidScroll(_ scrollView: UIScrollView) {
         let pullDistance = (scrollView.contentOffset.y + scrollView.frame.size.height) - scrollView.contentSize.height
+        
+        if isShowingUpToDate && pullDistance < 10 {
+            isShowingUpToDate = false
+            UIView.animate(withDuration: 0.4, animations: {
+                self.pullUpLabel.alpha = 0
+                self.lastSyncedLabel.alpha = 0
+                self.pullUpLabel.transform = CGAffineTransform(translationX: 0, y: -10)
+            }) { _ in
+                UIView.transition(with: self.pullUpLabel, duration: 0.2, options: .transitionCrossDissolve, animations: {
+                    self.pullUpLabel.text = "PULL UP FOR FRESH DATA"
+                    self.pullUpLabel.textColor = self.hintColor
+                    self.pullUpLabel.alpha = 1
+                    self.lastSyncedLabel.alpha = 1
+                    self.pullUpLabel.transform = .identity
+                }, completion: nil)
+            }
+        }
+
         if pullDistance > triggerThreshold && !isFetching {
             if !hasTriggeredHaptic {
                 pullUpLabel.text = "RELEASE TO REFRESH"; pullUpLabel.textColor = activeColor
                 feedbackGenerator.impactOccurred(); hasTriggeredHaptic = true
                 UIView.animate(withDuration: 0.2) { self.pullUpLabel.transform = CGAffineTransform(scaleX: 1.1, y: 1.1) }
             }
-        } else if !isFetching {
+        } else if !isFetching && !isShowingUpToDate {
             pullUpLabel.text = "PULL UP FOR FRESH DATA"
             pullUpLabel.textColor = hintColor; pullUpLabel.font = .systemFont(ofSize: 14, weight: .black)
             pullUpLabel.transform = .identity; hasTriggeredHaptic = false
@@ -503,6 +532,7 @@ class WeatherViewController: UIViewController, UIScrollViewDelegate {
     private func updateLastSyncedTimestamp() {
         let formatter = DateFormatter(); formatter.dateFormat = "MMM d, h:mm:ss a"
         lastSyncedLabel.text = "Last Synced: \(formatter.string(from: Date()))"
+        lastSyncedLabel.font = UIFont.systemFont(ofSize: 12, weight: .bold)
     }
 
     @objc func handleZoomTap(_ gesture: UITapGestureRecognizer) {
