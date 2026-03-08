@@ -10,9 +10,10 @@ import SwiftUI
 
 // MARK: - 1. Data Model
 struct WeatherEntry: Codable {
-    let locationName, temperature, humidity, pressure, timestamp, imageName, detailLocation, description: String
+    let locationName, temperature, humidity, pressure, timestamp, imageName, detailLocation, description: String?
     var imageURL: URL? {
-        return URL(string: imageName)
+        guard let name = imageName else {return nil}
+        return URL(string: name)
     }
 }
 
@@ -23,8 +24,12 @@ struct WeatherViewControllerWrapper: UIViewControllerRepresentable {
     }
     func updateUIViewController(_ uiViewController: UINavigationController, context: Context) {}
 }
+// MARK: Cached Images
+class ImageCache {
+    static let shared = NSCache<NSString, UIImage>()
+    }
 
-// MARK: - 3. iOS 26 Liquid Glass Component (Updated for Error State)
+// MARK: - 3. iOS 26 Liquid Glass Component
 struct iOS26GlassSpinner: View {
     @Binding var isFinished: Bool
     @Binding var isError: Bool
@@ -227,6 +232,9 @@ class WeatherViewController: UIViewController, UIScrollViewDelegate {
     let spinnerColor: UIColor = .systemPink
     let hintColor: UIColor = .black
     let activeColor: UIColor = .systemOrange
+    
+    var lastCacheClearTime: Date?
+    var cacheCoolDown: TimeInterval = 300
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -265,6 +273,25 @@ class WeatherViewController: UIViewController, UIScrollViewDelegate {
 
     func loadRemoteWeatherData(isManual: Bool = false) {
         guard !isFetching else { return }
+        // Clear the cache memory when user wants to refresh data
+        if isManual {
+            let now = Date()
+            
+            if let lastClear = lastCacheClearTime {
+                let timeSinceClear = now.timeIntervalSince(lastClear)
+                if (timeSinceClear >= cacheCoolDown) {
+                    ImageCache.shared.removeAllObjects()
+                    lastCacheClearTime = now
+                } else {
+                    print ("Cache not cleared yet. Try again in \(Int(cacheCoolDown - timeSinceClear)) seconds.")
+                }
+            }
+//            else {
+//                ImageCache.shared.removeAllObjects()
+//                lastCacheClearTime = now
+//            }
+        }
+        
         isFetching = true
         let startTime = Date()
         
@@ -392,7 +419,7 @@ class WeatherViewController: UIViewController, UIScrollViewDelegate {
         UIView.transition(with: self.stackView, duration: 0.6, options: .transitionCrossDissolve, animations: {
             self.stackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
             for (index, entry) in self.weatherEntries.enumerated() {
-                let card = self.createWeatherCard(title: entry.locationName, subtext: "\(entry.temperature) - \(entry.timestamp)", imgName: entry.imageName, locLabel: entry.detailLocation)
+                let card = self.createWeatherCard(entry: entry)
                 card.tag = index
                 let tap = UITapGestureRecognizer(target: self, action: #selector(self.handleZoomTap(_:)))
                 card.addGestureRecognizer(tap)
@@ -406,7 +433,15 @@ class WeatherViewController: UIViewController, UIScrollViewDelegate {
         })
     }
 
-    private func createWeatherCard(title: String, subtext: String, imgName: String, locLabel: String) -> UIView {
+    private func createWeatherCard(entry: WeatherEntry) -> UIView {
+        
+        let title = entry.locationName ?? "Unknown Location"
+        let temp = entry.temperature ?? "0.0°C"
+        let time = entry.timestamp ?? "No Timestamp"
+        let imgName = entry.imageName ?? "photo"
+        let locLabel = entry.detailLocation ?? "Unknown Location"
+        let subtext = "\(temp) - \(time)"
+        
         let card = UIView(); card.backgroundColor = .white; card.layer.cornerRadius = 20
         let shadowContainer = UIView()
         shadowContainer.layer.shadowColor = UIColor.black.cgColor; shadowContainer.layer.shadowOpacity = 0.45
@@ -437,6 +472,7 @@ class WeatherViewController: UIViewController, UIScrollViewDelegate {
         locBlur.layer.cornerRadius = 8; locBlur.clipsToBounds = true
         
         let tLabel = UILabel(); tLabel.text = title; tLabel.font = .boldSystemFont(ofSize: 22); tLabel.textColor = .black
+        
         let sLabel = UILabel(); sLabel.text = subtext; sLabel.textColor = .systemBlue
         
         [shadowContainer, tLabel, sLabel].forEach { $0.translatesAutoresizingMaskIntoConstraints = false; card.addSubview($0) }
@@ -551,7 +587,7 @@ class WeatherViewController: UIViewController, UIScrollViewDelegate {
         
         let zoomVC = ZoomAnimationViewController()
         zoomVC.headline = entry.locationName
-        zoomVC.subheadline = "\(entry.temperature) • \(entry.timestamp)"
+        zoomVC.subheadline = "\(entry.temperature ?? "--") - \(entry.timestamp ?? "--")"
         zoomVC.imageName = entry.imageName
         zoomVC.humidity = entry.humidity
         zoomVC.pressure = entry.pressure
@@ -575,13 +611,21 @@ class WeatherViewController: UIViewController, UIScrollViewDelegate {
     @objc func dismissVC() { dismiss(animated: true) }
 }
 
-// ---- Helper function to download/process GitHub images
+// MARK: Fetching Images From API
 extension UIImageView {
     func loadRemoteImage(from url: URL) {
-        // Create a loading spinner inside the image view while it works
+        let cacheKey = NSString(string: url.absoluteString)
+        
+        // Caching images
+        if let cachedImage = ImageCache.shared.object(forKey: cacheKey) {
+            self.image = cachedImage
+            return
+        }
+        
         let loader = UIActivityIndicatorView(style: .medium)
         loader.startAnimating()
         loader.center = CGPoint(x: self.bounds.midX, y: self.bounds.midY)
+        loader.color = .black
         loader.autoresizingMask = [.flexibleLeftMargin, .flexibleRightMargin, .flexibleTopMargin, .flexibleBottomMargin]
         self.addSubview(loader)
 
@@ -591,11 +635,14 @@ extension UIImageView {
                 loader.removeFromSuperview()
                 
                 if let data = data, let image = UIImage(data: data) {
+                    // --- SAVE TO CACHE: Store it for next time ---
+                    ImageCache.shared.setObject(image, forKey: cacheKey)
+                    
                     UIView.transition(with: self!, duration: 0.3, options: .transitionCrossDissolve, animations: {
                         self?.image = image
                     }, completion: nil)
                 }
             }
-        }.resume() // <--- Crucial: Starts the network task
+        }.resume()
     }
 }

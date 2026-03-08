@@ -15,8 +15,6 @@ class ZoomAnimationViewController: UIViewController {
     var humidity: String?
     var pressure: String?
     var detailedDescription: String?
-    
-    // Fix: Added missing property for the WeatherViewController to access
     var statusLabelFont: UIFont?
 
     // UI Components
@@ -30,17 +28,25 @@ class ZoomAnimationViewController: UIViewController {
         super.viewDidLoad()
         view.backgroundColor = .white
         setupLayout()
-        updateUI() // Load data into labels
+        updateUI()
     }
     
-    // Fix: Added missing updateUI method
     func updateUI() {
         loadViewIfNeeded()
-        iv.image = UIImage(named: imageName ?? "") ?? UIImage(systemName: "photo")
-        titleLabel.text = headline
-        statusLabel.text = subheadline
         
-        // Handle stats display only if data exists (Weather vs Newsletter)
+        let imgPath = imageName ?? ""
+        if let url = URL(string: imgPath), url.scheme == "https" {
+            iv.loadRemoteImage(from: url)
+        } else {
+            iv.image = UIImage(named: imgPath) ?? UIImage(systemName: "photo")
+        }
+        
+        
+        titleLabel.text = headline ?? "Weather Detail"
+        statusLabel.text = subheadline ?? "--"
+        descriptionLabel.text = detailedDescription ?? "No further details available."
+        
+        // Handle stats display safely
         if let h = humidity, let p = pressure {
             statsLabel.text = "Humidity: \(h) | Pressure: \(p)"
             statsLabel.isHidden = false
@@ -48,16 +54,13 @@ class ZoomAnimationViewController: UIViewController {
             statsLabel.isHidden = true
         }
         
-        descriptionLabel.text = detailedDescription
-        
-        // Fix: Properly apply the font if it was passed, otherwise use default
         if let customFont = statusLabelFont {
             statusLabel.font = customFont
         }
     }
     
     private func setupLayout() {
-        // Fix: Corrected Rounded Font Syntax for Title
+        // ... (Your existing font setup remains perfect)
         let titleBase = UIFont.systemFont(ofSize: 30, weight: .black)
         if let roundedTitle = titleBase.fontDescriptor.withDesign(.rounded) {
             titleLabel.font = UIFont(descriptor: roundedTitle, size: 30)
@@ -65,7 +68,6 @@ class ZoomAnimationViewController: UIViewController {
             titleLabel.font = titleBase
         }
         
-        // Fix: Corrected Rounded Font Syntax for Status
         let statusBase = UIFont.preferredFont(forTextStyle: .title2)
         if let roundedStatus = statusBase.fontDescriptor.withDesign(.rounded) {
             statusLabel.font = UIFont(descriptor: roundedStatus, size: statusBase.pointSize)
