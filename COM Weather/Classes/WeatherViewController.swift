@@ -11,6 +11,9 @@ import SwiftUI
 // MARK: - 1. Data Model
 struct WeatherEntry: Codable {
     let locationName, temperature, humidity, pressure, timestamp, imageName, detailLocation, description: String
+    var imageURL: URL? {
+        return URL(string: imageName)
+    }
 }
 
 // MARK: - 2. SwiftUI Wrapper
@@ -413,8 +416,15 @@ class WeatherViewController: UIViewController, UIScrollViewDelegate {
         let imageContainer = UIView()
         imageContainer.clipsToBounds = true; imageContainer.layer.cornerRadius = 15
         
-        let iv = UIImageView(image: UIImage(named: imgName) ?? UIImage(systemName: "photo"))
-        iv.contentMode = .scaleAspectFill; iv.tag = 99
+        let iv = UIImageView()
+        iv.contentMode = .scaleAspectFill
+        iv.tag = 99
+        
+        if let url = URL(string: imgName), url.scheme == "https" {
+            iv.loadRemoteImage(from: url)
+        } else {
+            iv.image = UIImage(named: imgName) ?? UIImage(systemName: "photo")
+        }
         
         let pinIcon = UIImageView(image: UIImage(systemName: "mappin.and.ellipse"))
         pinIcon.tintColor = .white
@@ -563,4 +573,29 @@ class WeatherViewController: UIViewController, UIScrollViewDelegate {
     }
     
     @objc func dismissVC() { dismiss(animated: true) }
+}
+
+// ---- Helper function to download/process GitHub images
+extension UIImageView {
+    func loadRemoteImage(from url: URL) {
+        // Create a loading spinner inside the image view while it works
+        let loader = UIActivityIndicatorView(style: .medium)
+        loader.startAnimating()
+        loader.center = CGPoint(x: self.bounds.midX, y: self.bounds.midY)
+        loader.autoresizingMask = [.flexibleLeftMargin, .flexibleRightMargin, .flexibleTopMargin, .flexibleBottomMargin]
+        self.addSubview(loader)
+
+        URLSession.shared.dataTask(with: url) { [weak self] data, _, _ in
+            DispatchQueue.main.async {
+                loader.stopAnimating()
+                loader.removeFromSuperview()
+                
+                if let data = data, let image = UIImage(data: data) {
+                    UIView.transition(with: self!, duration: 0.3, options: .transitionCrossDissolve, animations: {
+                        self?.image = image
+                    }, completion: nil)
+                }
+            }
+        }.resume() // <--- Crucial: Starts the network task
+    }
 }

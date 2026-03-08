@@ -32,8 +32,8 @@
 		7EF26B052F3F0103007F6F2F = {
 			isa = PBXGroup;
 			children = (
-				7EF26B102F3F0103007F6F2F /* COM Weather */,
 				7EF26B0F2F3F0103007F6F2F /* Products */,
+				7EF26B102F3F0103007F6F2F /* COM Weather */,
 			);
 			sourceTree = "<group>";
 		};
