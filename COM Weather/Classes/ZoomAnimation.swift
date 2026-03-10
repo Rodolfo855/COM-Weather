@@ -46,7 +46,6 @@ class ZoomAnimationViewController: UIViewController {
         statusLabel.text = subheadline ?? "--"
         descriptionLabel.text = detailedDescription ?? "No further details available."
         
-        // Handle stats display safely
         if let h = humidity, let p = pressure {
             statsLabel.text = "Humidity: \(h) | Pressure: \(p)"
             statsLabel.isHidden = false
@@ -60,7 +59,6 @@ class ZoomAnimationViewController: UIViewController {
     }
     
     private func setupLayout() {
-        // ... (Your existing font setup remains perfect)
         let titleBase = UIFont.systemFont(ofSize: 30, weight: .black)
         if let roundedTitle = titleBase.fontDescriptor.withDesign(.rounded) {
             titleLabel.font = UIFont(descriptor: roundedTitle, size: 30)

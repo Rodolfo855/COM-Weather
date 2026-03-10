@@ -67,13 +67,13 @@ struct ModernMLogo: View {
     }
 }
 
+// MARK: Current Animation Home Page
 struct ModernMLogo2: View {
     @State private var drawingProgress: CGFloat = 0.0
     @State private var isPulsing: Bool = false
     
     var body: some View {
         ZStack {
-            // Central Container for the M
             ZStack {
                 GeometryReader { geometry in
                     let w = geometry.size.width
@@ -91,23 +91,27 @@ struct ModernMLogo2: View {
                         mPath
                             .stroke(Color.white.opacity(0.1), style: StrokeStyle(lineWidth: 22, lineCap: .round, lineJoin: .round))
 
-                        // Flows forwaard
-                        mPath
-                            .trim(from: drawingProgress, to: drawingProgress + 0.3)
-                            .stroke(
-                                LinearGradient(colors: [.white, .cyan, .blue], startPoint: .topLeading, endPoint: .bottomTrailing),
-                                style: StrokeStyle(lineWidth: 22, lineCap: .round, lineJoin: .round)
-                            )
-                            .shadow(color: Color.cyan.opacity(isPulsing ? 0.8 : 0.4), radius: 12)
-
-                        // 3. Animated M Current (Loop Filler)
                         mPath
                             .trim(from: drawingProgress - 1.0, to: drawingProgress - 0.7)
                             .stroke(
                                 LinearGradient(colors: [.white, .cyan, .blue], startPoint: .topLeading, endPoint: .bottomTrailing),
                                 style: StrokeStyle(lineWidth: 22, lineCap: .round, lineJoin: .round)
                             )
-                            .shadow(color: Color.cyan.opacity(isPulsing ? 0.8 : 0.4), radius: 12)
+                            .shadow(color: Color.cyan.opacity(isPulsing ? 0.0 : 1.3), radius: 12)
+                        mPath
+                            .trim(from: drawingProgress, to: drawingProgress + 0.3)
+                            .stroke(
+                                LinearGradient(colors: [.white, .cyan, .blue], startPoint: .topLeading, endPoint: .bottomTrailing),
+                                style: StrokeStyle(lineWidth: 22, lineCap: .round, lineJoin: .round)
+                            )
+                            .shadow(color: Color.cyan.opacity(isPulsing ? 0.0 : 1.3), radius: 12)
+
+                        mPath
+                            .trim(from: drawingProgress + 1.0, to: drawingProgress + 1.3)
+                            .stroke(
+                                LinearGradient(colors: [.white, .cyan, .blue], startPoint: .topLeading, endPoint: .bottomTrailing),
+                                style: StrokeStyle(lineWidth: 22, lineCap: .round, lineJoin: .round)
+                            )
                     }
                 }
                 .frame(width: 140, height: 140)
@@ -122,22 +126,22 @@ struct ModernMLogo2: View {
                 Circle()
                     .stroke(Color.white.opacity(0.2), lineWidth: 4)
                 
-                // Animated Outer Arc
                 Circle()
-                    .trim(from: drawingProgress, to: drawingProgress + 0.2)
+                    .trim(from: 0, to: 0.15)
                     .stroke(
-                        LinearGradient(colors: [.cyan, .blue, .clear], startPoint: .topLeading, endPoint: .bottomTrailing),
-                        style: StrokeStyle(lineWidth: 4, lineCap: .round)
+                        LinearGradient(colors: [.white, .white, .cyan], startPoint: .topLeading, endPoint: .bottomTrailing),
+                        style: StrokeStyle(lineWidth: 5, lineCap: .round)
                     )
                     .rotationEffect(.degrees(-90))
+                    .rotationEffect(.degrees(Double(drawingProgress) * 360))
                     .shadow(color: Color.cyan.opacity(isPulsing ? 1.0 : 0.5), radius: 5)
             }
         )
         .onAppear {
-            withAnimation(Animation.linear(duration: 4.0).repeatForever(autoreverses: false)) {
+            withAnimation(.linear(duration: 4.0).repeatForever(autoreverses: false)) {
                 self.drawingProgress = 1.0
             }
-            withAnimation(Animation.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
+            withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
                 self.isPulsing = true
             }
         }
@@ -148,7 +152,7 @@ struct ContentView: View {
     @State private var activeSheet: SheetType?
     
     enum SheetType: String, Identifiable {
-        case weather, newsletter, map
+        case weather, newsletter, map, stats
         var id: String { self.rawValue }
     }
     
@@ -174,6 +178,8 @@ struct ContentView: View {
                 case .map:
                     CampusMapView()
                         .ignoresSafeArea(edges: .bottom)
+                case .stats:
+                    LiquidGlassEffectContainer()
                 }
             }
     }
@@ -220,21 +226,21 @@ struct ContentView: View {
         VStack(spacing: 18) {
             Button(action: { activeSheet = .weather }) {
                 Label("Live Weather", systemImage: "cloud.sun.fill")
-            }.buttonStyle(ModernButtonStyle(color: .white.opacity(  1.0)))
+            }.buttonStyle(ModernButtonStyle(color: .white.opacity(1.2)))
             
             Button(action: { activeSheet = .newsletter }) {
                 Label("Campus Feed", systemImage: "newspaper.fill")
-            }.buttonStyle(ModernButtonStyle(color: .cyan))
+            }.buttonStyle(ModernButtonStyle(color: .cyan.opacity( 1.2)))
             
             Button(action: { activeSheet = .map }) {
                 Label("Campus Map", systemImage: "map.fill")
-            }.buttonStyle(ModernButtonStyle(color: .white, isOutlined: true))
+            }.buttonStyle(ModernButtonStyle(color: .white.opacity(  1.2), isOutlined: true))
             
-            Button(action: {activeSheet = nil}){
+            Button(action: {activeSheet = .stats}){
                 Label("Stats for nerds", systemImage: "chart.bar.fill")
-            }.buttonStyle(ModernButtonStyle(color: .indigo.opacity(1.0)))
+            }.buttonStyle(ModernButtonStyle(color: .indigo.opacity(1.4)))
         }
-        .padding(.bottom, 40)
+        .padding(.bottom, 0)
     }
 }
 
