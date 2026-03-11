@@ -167,21 +167,26 @@ struct ContentView: View {
             }
             .padding(30)
         }
-        .sheet(item: $activeSheet) { item in
+        .fullScreenCover(item: $activeSheet) { item in
             switch item {
                 case .weather:
                     WeatherViewControllerWrapper()
-                        .ignoresSafeArea(edges: .bottom) 
+                        .ignoresSafeArea(edges: .bottom)
+                        .ignoresSafeArea(edges: .top)
                 case .newsletter:
                     NewsletterViewControllerWrapper()
                         .ignoresSafeArea(edges: .bottom)
+                        .ignoresSafeArea(edges: .top)
                 case .map:
                     CampusMapView()
                         .ignoresSafeArea(edges: .bottom)
+                        .ignoresSafeArea(edges: .top)
                 case .stats:
                     LiquidGlassEffectContainer()
                 }
+            
             }
+       
     }
     
     private var headerView: some View {

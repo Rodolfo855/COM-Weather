@@ -210,6 +210,7 @@ class ModernSpinnerController: UIView {
 
 // MARK: - 6. Main Weather View Controller
 class WeatherViewController: UIViewController, UIScrollViewDelegate {
+    static let themeBackGroundColor = UIColor(white: 0.87, alpha: 1.0)
     var weatherEntries: [WeatherEntry] = []
     let scrollView = UIScrollView()
     let stackView = UIStackView()
