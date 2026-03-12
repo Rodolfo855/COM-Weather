@@ -22,6 +22,12 @@ struct LiquidGlassEffectContainer: View {
                 
                 VStack(spacing: 30) {
                     if !showDeveloping {
+                        AnimatedLogo()
+                            .blendMode(.screen)
+                            //.scaleEffect(morph ? 1.05 : 0.95)
+                            .animation(.easeInOut(duration: 2.0).repeatForever(autoreverses: true), value: morph)
+                            //.padding(.bottom, 20)
+                            
                         HStack(spacing: morph ? 50.0 : -15.0) {
                             Button {
                             } label: {
@@ -49,7 +55,7 @@ struct LiquidGlassEffectContainer: View {
                         
                         Text("Fetching data")
                             .font(.system(size: 26.0, weight: .black, design: .monospaced))
-                            .foregroundColor(.green.opacity(1.8))
+                            .foregroundColor(.green.opacity(0.8))
                             .opacity(morph ? 1.0 : 0.4)
                             .animation(.easeInOut(duration: 0.5).repeatForever(autoreverses: true), value: morph)
                     } else {
@@ -62,7 +68,7 @@ struct LiquidGlassEffectContainer: View {
                 .onAppear {
                     self.morph.toggle()
                     
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 15.0) {
                         print("Developing")
                         withAnimation {
                             self.showDeveloping = true
@@ -77,7 +83,36 @@ struct LiquidGlassEffectContainer: View {
         }
     }
 }
-//#Preview {
-//    LiquidGlassEffectContainer()
-//        .preferredColorScheme(.dark)
-//}
+
+struct AnimatedLogo: View {
+    var body: some View {
+        ZStack {
+            Image("logoStats")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 400, height: 400)
+                .scaleEffect(2)
+                .phaseAnimator([0, 360]) { content, angle in
+                    content.rotationEffect(.degrees(angle))
+                } animation: { _ in
+                    .linear(duration: 7).repeatForever(autoreverses: false)
+                }
+
+            VStack(spacing: 2) {
+                Text("By:")
+                    .font(.system(size: 14, weight: .bold, design: .monospaced))
+                    .foregroundColor(.white.opacity(1.5))
+                
+                Text("Victor R")
+                    .font(.system(size: 26, weight: .black, design: .monospaced))
+                    .foregroundColor(.white)
+            }
+            .offset(y: -5)
+        }
+    }
+}
+
+#Preview {
+    LiquidGlassEffectContainer()
+        .preferredColorScheme(.dark)
+}
