@@ -1,23 +1,28 @@
+//
+//  ContentView.swift
+//  COM Weather
+//
+//  Created by Victor Rosales on 2/14/26.
+//
+
 import SwiftUI
 
-// MARK: Struct for the College of Marin Home Page
 struct MarinLogoShape: Shape {
     func path(in rect: CGRect) -> Path {
         var path = Path()
         let w = rect.width
         let h = rect.height
         
-        path.move(to: CGPoint(x: w * 0.15, y: h * 0.85)) // Bottom Left
-        path.addLine(to: CGPoint(x: w * 0.15, y: h * 0.15)) // Top Left
-        path.addLine(to: CGPoint(x: w * 0.5, y: h * 0.5))   // Middle Dip
-        path.addLine(to: CGPoint(x: w * 0.85, y: h * 0.15)) // Top Right
-        path.addLine(to: CGPoint(x: w * 0.85, y: h * 0.85)) // Bottom Right
+        path.move(to: CGPoint(x: w * 0.15, y: h * 0.85))
+        path.addLine(to: CGPoint(x: w * 0.15, y: h * 0.15))
+        path.addLine(to: CGPoint(x: w * 0.5, y: h * 0.5))
+        path.addLine(to: CGPoint(x: w * 0.85, y: h * 0.15))
+        path.addLine(to: CGPoint(x: w * 0.85, y: h * 0.85))
         
         return path
     }
 }
 
-// MARK: Struct for College of Marin Home Page version 2
 struct ModernMLogo: View {
     var body: some View {
         ZStack {
@@ -30,15 +35,10 @@ struct ModernMLogo: View {
                 let h = geometry.size.height
                 
                 Path { path in
-                    // Start Bottom Left
                     path.move(to: CGPoint(x: w * 0.2, y: h * 0.8))
-                    // Up to Top Left
                     path.addLine(to: CGPoint(x: w * 0.2, y: h * 0.25))
-                    // Down to Center
                     path.addLine(to: CGPoint(x: w * 0.5, y: h * 0.6))
-                    // Up to Top Right
                     path.addLine(to: CGPoint(x: w * 0.8, y: h * 0.25))
-                    // Down to Bottom Right
                     path.addLine(to: CGPoint(x: w * 0.8, y: h * 0.8))
                 }
                 .stroke(
@@ -67,10 +67,11 @@ struct ModernMLogo: View {
     }
 }
 
-// MARK: Current Animation Home Page
 struct ModernMLogo2: View {
+    let isAnimating: Bool
     @State private var drawingProgress: CGFloat = 0.0
     @State private var isPulsing: Bool = false
+    @State private var logoOpacity: Double = 0.0
     
     var body: some View {
         ZStack {
@@ -98,6 +99,7 @@ struct ModernMLogo2: View {
                                 style: StrokeStyle(lineWidth: 22, lineCap: .round, lineJoin: .round)
                             )
                             .shadow(color: Color.cyan.opacity(isPulsing ? 0.0 : 1.3), radius: 12)
+                        
                         mPath
                             .trim(from: drawingProgress, to: drawingProgress + 0.3)
                             .stroke(
@@ -121,6 +123,7 @@ struct ModernMLogo2: View {
         .frame(width: 200, height: 200)
         .background(Color.white.opacity(0.05))
         .clipShape(Circle())
+        .opacity(logoOpacity)
         .overlay(
             ZStack {
                 Circle()
@@ -137,12 +140,23 @@ struct ModernMLogo2: View {
                     .shadow(color: Color.cyan.opacity(isPulsing ? 1.0 : 0.5), radius: 5)
             }
         )
-        .onAppear {
-            withAnimation(.linear(duration: 4.0).repeatForever(autoreverses: false)) {
-                self.drawingProgress = 1.0
-            }
-            withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
-                self.isPulsing = true
+        .onChange(of: isAnimating, initial: true) { _, newValue in
+            if newValue {
+                withAnimation(.easeIn(duration: 0.8)) {
+                    self.logoOpacity = 1.0
+                }
+                withAnimation(.linear(duration: 4.0).repeatForever(autoreverses: false)) {
+                    self.drawingProgress = 1.0
+                }
+                withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
+                    self.isPulsing = true
+                }
+            } else {
+                withAnimation(.easeOut(duration: 0.4)) {
+                    self.logoOpacity = 0.0
+                    self.drawingProgress = 0.0
+                    self.isPulsing = false
+                }
             }
         }
     }
@@ -184,29 +198,12 @@ struct ContentView: View {
                 case .stats:
                     LiquidGlassEffectContainer()
                 }
-            
             }
-       
     }
     
     private var headerView: some View {
         VStack(spacing: 15) {
-//            Image("banner1")
-//                .resizable()
-//                .aspectRatio(contentMode: .fill)
-//                .frame(width: 200, height: 200)
-//                .clipShape(Circle())
-//                .overlay(Circle().stroke(Color.white.opacity(0.2), lineWidth: 4))
-//            MarinLogoShape()
-//                .stroke(LinearGradient(colors: [.white, .blue], startPoint: .top, endPoint: .bottom),
-//                    style: StrokeStyle(lineWidth: 12, lineCap: .round, lineJoin: .round))
-//                        .frame(width: 150, height: 150)
-//                        .padding(25)
-//                        .background(Color.white.opacity(0.05))
-//                        .clipShape(Circle())
-//
-            //ModernMLogo()
-            ModernMLogo2()
+            ModernMLogo2(isAnimating: activeSheet == nil)
             VStack(spacing: 8) {
                 Text("College of Marin")
                     .font(.system(size: 34, weight: .black, design: .rounded))
@@ -225,6 +222,8 @@ struct ContentView: View {
             .scaledToFit()
             .frame(width: 200, height: 200)
             .shadow(color: .orange.opacity(0.4), radius: 30)
+            .opacity(activeSheet == nil ? 1.0 : 0.0)
+            .animation(.easeInOut(duration: 0.5), value: activeSheet)
     }
     
     private var buttonStack: some View {
@@ -241,14 +240,10 @@ struct ContentView: View {
                 Label("Campus Map", systemImage: "map.fill")
             }.buttonStyle(ModernButtonStyle(color: .white.opacity(  1.2), isOutlined: true))
             
-            Button(action: {activeSheet = .stats}){
+            Button(action: { activeSheet = .stats }){
                 Label("Stats for nerds", systemImage: "chart.bar.fill")
             }.buttonStyle(ModernButtonStyle(color: .indigo.opacity(1.4)))
         }
         .padding(.bottom, 0)
     }
 }
-
-//#Preview {
-//    ContentView()
-//}

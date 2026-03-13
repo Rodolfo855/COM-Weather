@@ -8,28 +8,25 @@
 import UIKit
 import SwiftUI
 
-// MARK: - 1. Data Model
 struct WeatherEntry: Codable {
     let locationName, temperature, humidity, pressure, timestamp, imageName, detailLocation, description: String?
     var imageURL: URL? {
-        guard let name = imageName else {return nil}
+        guard let name = imageName else { return nil }
         return URL(string: name)
     }
 }
 
-// MARK: - 2. SwiftUI Wrapper
 struct WeatherViewControllerWrapper: UIViewControllerRepresentable {
     func makeUIViewController(context: Context) -> UINavigationController {
         return UINavigationController(rootViewController: WeatherViewController())
     }
     func updateUIViewController(_ uiViewController: UINavigationController, context: Context) {}
 }
-// MARK: Cached Images
+
 class ImageCache {
     static let shared = NSCache<NSString, UIImage>()
-    }
+}
 
-// MARK: - 3. iOS 26 Liquid Glass Component
 struct iOS26GlassSpinner: View {
     @Binding var isFinished: Bool
     @Binding var isError: Bool
@@ -94,7 +91,6 @@ struct iOS26GlassSpinner: View {
     }
 }
 
-// MARK: - 4. Skeleton Loading View
 class SkeletonCardView: UIView {
     private let shimmerLayer = CAGradientLayer()
     
@@ -134,7 +130,6 @@ class SkeletonCardView: UIView {
     }
 }
 
-// MARK: - 5. UIKit Bridge for Spinner
 class ModernSpinnerController: UIView {
     var isFinished = false { didSet { updateView() } }
     var isError = false { didSet { updateView() } }
@@ -208,7 +203,6 @@ class ModernSpinnerController: UIView {
     }
 }
 
-// MARK: - 6. Main Weather View Controller
 class WeatherViewController: UIViewController, UIScrollViewDelegate {
     static let themeBackGroundColor = UIColor(white: 0.87, alpha: 1.0)
     var weatherEntries: [WeatherEntry] = []
@@ -227,7 +221,7 @@ class WeatherViewController: UIViewController, UIScrollViewDelegate {
     var isShowingUpToDate = false
     
     let triggerThreshold: CGFloat = 120.0
-    let minAnimationTime: Double = 1.0
+    let minAnimationTime: UInt64 = 1_000_000_000
     let footerHeight: CGFloat = 80.0
     
     let spinnerColor: UIColor = .systemPink
@@ -236,7 +230,9 @@ class WeatherViewController: UIViewController, UIScrollViewDelegate {
     
     var lastCacheClearTime: Date?
     var cacheCoolDown: TimeInterval = 300
+    private var fetchTask: Task<Void, Never>?
 
+    // MARK: Configures initial view and starts first load
     override func viewDidLoad() {
         super.viewDidLoad()
         title = "Live Weather"
@@ -249,6 +245,13 @@ class WeatherViewController: UIViewController, UIScrollViewDelegate {
         loadRemoteWeatherData(isManual: false)
     }
     
+    // MARK: Cancels network task when user closes window
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        fetchTask?.cancel()
+    }
+    
+    // MARK: Sets up the visual spinner constraints
     private func setupModernSpinner() {
         modernSpinner.translatesAutoresizingMaskIntoConstraints = false
         modernSpinner.isHidden = false
@@ -261,6 +264,7 @@ class WeatherViewController: UIViewController, UIScrollViewDelegate {
         ])
     }
 
+    // MARK: Populates stack with shimmer cards
     private func showSkeletons() {
         stackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
         for _ in 0...2 {
@@ -272,72 +276,69 @@ class WeatherViewController: UIViewController, UIScrollViewDelegate {
         }
     }
 
+    // MARK: Asynchronous network fetch with auto-cancellation
     func loadRemoteWeatherData(isManual: Bool = false) {
         guard !isFetching else { return }
-        // Clear the cache memory when user wants to refresh data
+        
         if isManual {
             let now = Date()
-            
             if let lastClear = lastCacheClearTime {
                 let timeSinceClear = now.timeIntervalSince(lastClear)
                 if (timeSinceClear >= cacheCoolDown) {
                     ImageCache.shared.removeAllObjects()
                     lastCacheClearTime = now
-                } else {
-                    print ("Cache not cleared yet. Try again in \(Int(cacheCoolDown - timeSinceClear)) seconds.")
                 }
             }
-//            else {
-//                ImageCache.shared.removeAllObjects()
-//                lastCacheClearTime = now
-//            }
         }
         
         isFetching = true
-        let startTime = Date()
         
-        DispatchQueue.main.async {
-            if isManual {
-                self.pullUpSpinner.startAnimating()
-                self.pullUpLabel.text = "FETCHING..."
-                self.pullUpLabel.textColor = .systemGreen
-            } else {
-                self.modernSpinner.reset()
-            }
+        if isManual {
+            self.pullUpSpinner.startAnimating()
+            self.pullUpLabel.text = "FETCHING..."
+            self.pullUpLabel.textColor = .systemGreen
+        } else {
+            self.modernSpinner.reset()
         }
-        
-        let urlString = "https://raw.githubusercontent.com/Rodolfo855/ContentManagementSystem/main/news/weather%2Cjson?v=\(Date().timeIntervalSince1970)"
-        guard let url = URL(string: urlString) else { return }
-        
-        URLSession.shared.dataTask(with: url) { [weak self] data, _, error in
-            let elapsed = Date().timeIntervalSince(startTime)
-            let remainingDelay = max(0, (self?.minAnimationTime ?? 3.5) - elapsed)
-            
-            DispatchQueue.main.asyncAfter(deadline: .now() + remainingDelay) {
-                if let data = data, let decoded = try? JSONDecoder().decode([WeatherEntry].self, from: data) {
-                    if !isManual {
-                        UINotificationFeedbackGenerator().notificationOccurred(.success)
-                        self?.modernSpinner.showSuccess {
-                            self?.completeDataProcessing(data: data, decoded: decoded)
+
+        fetchTask = Task {
+            let urlString = "https://raw.githubusercontent.com/Rodolfo855/ContentManagementSystem/main/news/weather%2Cjson?v=\(Date().timeIntervalSince1970)"
+            guard let url = URL(string: urlString) else { return }
+
+            do {
+                let (data, _) = try await URLSession.shared.data(from: url)
+                try await Task.sleep(nanoseconds: minAnimationTime)
+                
+                if Task.isCancelled { return }
+
+                if let decoded = try? JSONDecoder().decode([WeatherEntry].self, from: data) {
+                    await MainActor.run {
+                        if !isManual {
+                            UINotificationFeedbackGenerator().notificationOccurred(.success)
+                            self.modernSpinner.showSuccess {
+                                self.completeDataProcessing(data: data, decoded: decoded)
+                            }
+                        } else {
+                            self.completeDataProcessing(data: data, decoded: decoded)
                         }
-                    } else {
-                        self?.completeDataProcessing(data: data, decoded: decoded)
                     }
-                } else {
+                }
+            } catch {
+                if Task.isCancelled { return }
+                await MainActor.run {
                     if !isManual {
                         UINotificationFeedbackGenerator().notificationOccurred(.error)
-                        self?.modernSpinner.showError {
-                            self?.dismiss(animated: true)
-                        }
+                        self.modernSpinner.showError { self.dismiss(animated: true) }
                     } else {
-                        self?.isFetching = false
-                        self?.showPullUpErrorAlert()
+                        self.isFetching = false
+                        self.showPullUpErrorAlert()
                     }
                 }
             }
-        }.resume()
+        }
     }
 
+    // MARK: Displays UI alert for failed pull-to-refresh
     private func showPullUpErrorAlert() {
         self.pullUpSpinner.stopAnimating()
         self.pullUpLabel.text = "COULD NOT FETCH DATA!"
@@ -351,6 +352,7 @@ class WeatherViewController: UIViewController, UIScrollViewDelegate {
         self.present(alert, animated: true)
     }
 
+    // MARK: Cleans up UI states after successful data load
     private func completeDataProcessing(data: Data?, decoded: [WeatherEntry]?) {
         UIView.animate(withDuration: 0.5) { self.scrollView.contentInset.bottom = 0 }
         self.isFetching = false
@@ -369,7 +371,6 @@ class WeatherViewController: UIViewController, UIScrollViewDelegate {
         spring.damping = 3.0
         spring.initialVelocity = 5.0
         spring.duration = spring.settlingDuration
-        
         self.pullUpLabel.layer.add(spring, forKey: "springJump")
         
         if let decoded = decoded {
@@ -379,6 +380,7 @@ class WeatherViewController: UIViewController, UIScrollViewDelegate {
         }
     }
 
+    // MARK: Initializes ScrollView and Footer layout
     private func setupLayout() {
         view.addSubview(scrollView)
         scrollView.addSubview(stackView)
@@ -416,6 +418,7 @@ class WeatherViewController: UIViewController, UIScrollViewDelegate {
         stackView.layoutMargins = UIEdgeInsets(top: 10, left: 0, bottom: 5, right: 0)
     }
 
+    // MARK: Rebuilds weather cards with cross-dissolve
     private func refreshUI() {
         UIView.transition(with: self.stackView, duration: 0.6, options: .transitionCrossDissolve, animations: {
             self.stackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
@@ -434,8 +437,8 @@ class WeatherViewController: UIViewController, UIScrollViewDelegate {
         })
     }
 
+    // MARK: Creates individual weather card with parallax image
     private func createWeatherCard(entry: WeatherEntry) -> UIView {
-        
         let title = entry.locationName ?? "Unknown Location"
         let temp = entry.temperature ?? "0.0°C"
         let time = entry.timestamp ?? "No Timestamp"
@@ -473,7 +476,6 @@ class WeatherViewController: UIViewController, UIScrollViewDelegate {
         locBlur.layer.cornerRadius = 8; locBlur.clipsToBounds = true
         
         let tLabel = UILabel(); tLabel.text = title; tLabel.font = .boldSystemFont(ofSize: 22); tLabel.textColor = .black
-        
         let sLabel = UILabel(); sLabel.text = subtext; sLabel.textColor = .systemBlue
         
         [shadowContainer, tLabel, sLabel].forEach { $0.translatesAutoresizingMaskIntoConstraints = false; card.addSubview($0) }
@@ -512,6 +514,7 @@ class WeatherViewController: UIViewController, UIScrollViewDelegate {
         return card
     }
     
+    // MARK: Handles parallax and pull-to-refresh UI logic
     func scrollViewDidScroll(_ scrollView: UIScrollView) {
         let pullDistance = (scrollView.contentOffset.y + scrollView.frame.size.height) - scrollView.contentSize.height
         
@@ -558,6 +561,7 @@ class WeatherViewController: UIViewController, UIScrollViewDelegate {
         }
     }
     
+    // MARK: Smooth card entrance animation
     func animateWeatherCardAppearance(for card: UIView, delay: TimeInterval) {
         card.alpha = 0
         card.transform = CGAffineTransform(translationX: 0, y: 60).scaledBy(x: 0.85, y: 0.85)
@@ -568,6 +572,7 @@ class WeatherViewController: UIViewController, UIScrollViewDelegate {
         }
     }
     
+    // MARK: Detects drop of pull-to-refresh
     func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
         let pullDistance = (scrollView.contentOffset.y + scrollView.frame.size.height) - scrollView.contentSize.height
         if pullDistance > triggerThreshold && !isFetching {
@@ -576,12 +581,14 @@ class WeatherViewController: UIViewController, UIScrollViewDelegate {
         }
     }
 
+    // MARK: Updates the displayed time of last data fetch
     private func updateLastSyncedTimestamp() {
         let formatter = DateFormatter(); formatter.dateFormat = "MMM d, h:mm:ss a"
         lastSyncedLabel.text = "Last Synced: \(formatter.string(from: Date()))"
         lastSyncedLabel.font = UIFont.systemFont(ofSize: 12, weight: .bold)
     }
 
+    // MARK: Opens detailed view when card is tapped
     @objc func handleZoomTap(_ gesture: UITapGestureRecognizer) {
         guard let tappedView = gesture.view, tappedView.tag < weatherEntries.count else { return }
         let entry = weatherEntries[tappedView.tag]
@@ -609,20 +616,21 @@ class WeatherViewController: UIViewController, UIScrollViewDelegate {
         present(zoomVC, animated: true)
     }
     
+    // MARK: Dismisses the current view controller
     @objc func dismissVC() { dismiss(animated: true) }
 }
 
-// MARK: Fetching Images From API
 extension UIImageView {
+    // MARK: Loads image from URL with memory-safe [weak self]
     func loadRemoteImage(from url: URL) {
         let cacheKey = NSString(string: url.absoluteString)
         
-        // Caching images
         if let cachedImage = ImageCache.shared.object(forKey: cacheKey) {
             self.image = cachedImage
             return
         }
         
+        let currentTag = self.tag
         let loader = UIActivityIndicatorView(style: .medium)
         loader.startAnimating()
         loader.center = CGPoint(x: self.bounds.midX, y: self.bounds.midY)
@@ -632,15 +640,14 @@ extension UIImageView {
 
         URLSession.shared.dataTask(with: url) { [weak self] data, _, _ in
             DispatchQueue.main.async {
+                guard let self = self, self.tag == currentTag else { return }
                 loader.stopAnimating()
                 loader.removeFromSuperview()
                 
                 if let data = data, let image = UIImage(data: data) {
-                    // --- SAVE TO CACHE: Store it for next time ---
                     ImageCache.shared.setObject(image, forKey: cacheKey)
-                    
-                    UIView.transition(with: self!, duration: 0.3, options: .transitionCrossDissolve, animations: {
-                        self?.image = image
+                    UIView.transition(with: self, duration: 0.3, options: .transitionCrossDissolve, animations: {
+                        self.image = image
                     }, completion: nil)
                 }
             }
