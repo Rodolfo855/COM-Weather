@@ -68,7 +68,7 @@ struct LiquidGlassEffectContainer: View {
                 .onAppear {
                     self.morph.toggle()
                     
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 15.0) {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
                         print("Developing")
                         withAnimation {
                             self.showDeveloping = true
