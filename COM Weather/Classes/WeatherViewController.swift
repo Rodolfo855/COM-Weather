@@ -32,7 +32,6 @@ struct iOS26GlassSpinner: View {
     @Binding var isFinished: Bool
     @Binding var isError: Bool
     @State private var rotation: Double = 0
-    @State private var isPulsing: Bool = false
     
     var body: some View {
         VStack(spacing: 28) {
@@ -78,12 +77,6 @@ struct iOS26GlassSpinner: View {
                 .font(.system(size: 13, weight: .black, design: .rounded))
                 .kerning(2.5)
                 .foregroundStyle(isError ? Color.red.opacity(0.8) : Color.primary.opacity(0.7))
-                .id("StatusText" + String(isFinished) + String(isError))
-                .onAppear {
-                    withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true)) {
-                        isPulsing = true
-                    }
-                }
         }
         .animation(.spring(response: 0.6, dampingFraction: 0.7), value: isFinished)
         .animation(.spring(response: 0.6, dampingFraction: 0.7), value: isError)
@@ -92,29 +85,20 @@ struct iOS26GlassSpinner: View {
 
 class SkeletonCardView: UIView {
     private let shimmerLayer = CAGradientLayer()
-    
     override init(frame: CGRect) {
         super.init(frame: frame)
         setupSkeleton()
     }
-    
     required init?(coder: NSCoder) { super.init(coder: coder); setupSkeleton() }
-    
     private func setupSkeleton() {
         backgroundColor = UIColor.secondarySystemBackground
         layer.cornerRadius = 20
         clipsToBounds = true
-        
-        shimmerLayer.colors = [
-            UIColor.clear.cgColor,
-            UIColor.white.withAlphaComponent(0.5).cgColor,
-            UIColor.clear.cgColor
-        ]
+        shimmerLayer.colors = [UIColor.clear.cgColor, UIColor.white.withAlphaComponent(0.5).cgColor, UIColor.clear.cgColor]
         shimmerLayer.startPoint = CGPoint(x: 0, y: 0.5)
         shimmerLayer.endPoint = CGPoint(x: 1, y: 0.5)
         shimmerLayer.locations = [0.3, 0.5, 0.7]
         layer.addSublayer(shimmerLayer)
-        
         let animation = CABasicAnimation(keyPath: "locations")
         animation.fromValue = [-0.4, -0.2, 0.0]
         animation.toValue = [1.0, 1.2, 1.4]
@@ -122,7 +106,6 @@ class SkeletonCardView: UIView {
         animation.repeatCount = .infinity
         shimmerLayer.add(animation, forKey: "shimmer")
     }
-    
     override func layoutSubviews() {
         super.layoutSubviews()
         shimmerLayer.frame = bounds
@@ -133,14 +116,11 @@ class ModernSpinnerController: UIView {
     var isFinished = false { didSet { updateView() } }
     var isError = false { didSet { updateView() } }
     private var hostingController: UIHostingController<iOS26GlassSpinner>?
-
     override init(frame: CGRect) {
         super.init(frame: frame)
         setupView()
     }
-
     required init?(coder: NSCoder) { super.init(coder: coder); setupView() }
-
     private func setupView() {
         updateView()
         guard let hc = hostingController else { return }
@@ -154,7 +134,6 @@ class ModernSpinnerController: UIView {
             hc.view.trailingAnchor.constraint(equalTo: trailingAnchor)
         ])
     }
-    
     func showSuccess(completion: @escaping () -> Void) {
         isFinished = true
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
@@ -167,19 +146,15 @@ class ModernSpinnerController: UIView {
             }
         }
     }
-
     func showError(completion: @escaping () -> Void) {
         isError = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-            UIView.animate(withDuration: 0.6, animations: {
-                self.alpha = 0
-            }) { _ in
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+            UIView.animate(withDuration: 0.6, animations: { self.alpha = 0 }) { _ in
                 self.isHidden = true
                 completion()
             }
         }
     }
-    
     func reset() {
         isFinished = false
         isError = false
@@ -188,7 +163,6 @@ class ModernSpinnerController: UIView {
         self.isHidden = false
         updateView()
     }
-    
     private func updateView() {
         let spinner = iOS26GlassSpinner(
             isFinished: .init(get: { self.isFinished }, set: { self.isFinished = $0 }),
@@ -208,29 +182,24 @@ class WeatherViewController: UIViewController, UIScrollViewDelegate {
     let scrollView = UIScrollView()
     let stackView = UIStackView()
     let modernSpinner = ModernSpinnerController()
-    
     let footerContainer = UIStackView()
     let pullUpLabel = UILabel()
     let lastSyncedLabel = UILabel()
     let pullUpSpinner = UIActivityIndicatorView(style: .medium)
     let feedbackGenerator = UIImpactFeedbackGenerator(style: .medium)
-    
     var isFetching = false
     var hasTriggeredHaptic = false
     var isShowingUpToDate = false
     var errorCardIndexes = Set<Int>()
-    
     let triggerThreshold: CGFloat = 120.0
-    let initialAnimationTime: UInt64 = 1_500_000_000
-    let manualAnimationTime: UInt64 = 1_500_000_000
+    let initialAnimationTime: UInt64 = 750_000_000
+    let manualAnimationTime: UInt64 = 750_000_000
     let footerHeight: CGFloat = 80.0
-    
     let spinnerColor: UIColor = .systemPink
     let hintColor: UIColor = .label
-    let activeColor: UIColor = .systemOrange
-    
-    var lastCacheClearTime: Date?
-    var cacheCoolDown: TimeInterval = 300
+    let activeColor: UIColor = .systemPurple
+    let cardCornerRadius: CGFloat = 22
+    let cardImageCornerRadius: CGFloat = 18
     private var fetchTask: Task<Void, Never>?
 
     override func viewDidLoad() {
@@ -238,18 +207,17 @@ class WeatherViewController: UIViewController, UIScrollViewDelegate {
         title = "Live Weather"
         view.backgroundColor = Self.themeBackGroundColor
         navigationItem.rightBarButtonItem = UIBarButtonItem(barButtonSystemItem: .done, target: self, action: #selector(dismissVC))
-        
         setupLayout()
         setupModernSpinner()
         showSkeletons()
         loadRemoteWeatherData(isManual: false)
     }
-    
+
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
         fetchTask?.cancel()
     }
-    
+
     private func setupModernSpinner() {
         modernSpinner.translatesAutoresizingMaskIntoConstraints = false
         modernSpinner.isHidden = false
@@ -276,7 +244,6 @@ class WeatherViewController: UIViewController, UIScrollViewDelegate {
     func loadRemoteWeatherData(isManual: Bool = false) {
         guard !isFetching else { return }
         isFetching = true
-        
         if isManual {
             self.pullUpSpinner.startAnimating()
             self.pullUpLabel.text = "FETCHING..."
@@ -284,41 +251,33 @@ class WeatherViewController: UIViewController, UIScrollViewDelegate {
         } else {
             self.modernSpinner.reset()
         }
-
         fetchTask = Task {
             let urlString = "https://raw.githubusercontent.com/Rodolfo855/ContentManagementSystem/main/news/weather%2Cjson?v=\(Date().timeIntervalSince1970)"
             guard let url = URL(string: urlString) else { return }
-
             do {
                 try await Task.sleep(nanoseconds: isManual ? manualAnimationTime : initialAnimationTime)
-                
                 let (data, _) = try await URLSession.shared.data(from: url)
-                
                 if let decoded = try? JSONDecoder().decode([WeatherEntry].self, from: data) {
                     await MainActor.run {
                         self.errorCardIndexes.removeAll()
                         if !isManual {
                             UINotificationFeedbackGenerator().notificationOccurred(.success)
-                            self.modernSpinner.showSuccess {
-                                self.completeDataProcessing(data: data, decoded: decoded)
-                            }
+                            self.modernSpinner.showSuccess { self.completeDataProcessing(data: data, decoded: decoded) }
                         } else {
                             self.completeDataProcessing(data: data, decoded: decoded)
                         }
                     }
-                } else {
-                    throw NSError(domain: "DataError", code: 0)
-                }
+                } else { throw NSError(domain: "DataError", code: 0) }
             } catch {
                 await MainActor.run {
                     if !isManual {
                         UINotificationFeedbackGenerator().notificationOccurred(.error)
                         self.modernSpinner.showError {
-                            self.dismiss(animated: true)
+                            let alert = UIAlertController(title: "Network Error", message: "Failed to fetch weather data. Please check your connection.", preferredStyle: .alert)
+                            alert.addAction(UIAlertAction(title: "OK", style: .default) { _ in self.dismissVC() })
+                            self.present(alert, animated: true)
                         }
-                    } else {
-                        self.handleManualRefreshFailure()
-                    }
+                    } else { self.handleManualRefreshFailure() }
                 }
             }
         }
@@ -327,10 +286,15 @@ class WeatherViewController: UIViewController, UIScrollViewDelegate {
     private func handleManualRefreshFailure() {
         self.isFetching = false
         self.pullUpSpinner.stopAnimating()
-        self.pullUpLabel.text = "CONNECTION FAILED"
+        self.isShowingUpToDate = false
+        self.pullUpLabel.text = "NETWORK ERROR"
         self.pullUpLabel.textColor = .systemRed
         UIView.animate(withDuration: 0.3) { self.scrollView.contentInset.bottom = 0 }
         self.replaceCardImagesWithErrorAnimation()
+        
+        let alert = UIAlertController(title: "Refresh Failed", message: "Could not sync data. Check your network and try again.", preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        self.present(alert, animated: true)
     }
 
     private func replaceCardImagesWithErrorAnimation() {
@@ -340,12 +304,10 @@ class WeatherViewController: UIViewController, UIScrollViewDelegate {
             errorCardIndexes.insert(index)
             imageView.image = nil
             imageView.subviews.forEach { $0.removeFromSuperview() }
-            
             let errorHost = UIHostingController(rootView: LottieErrorAnimationView())
             errorHost.view.backgroundColor = .clear
             errorHost.view.translatesAutoresizingMaskIntoConstraints = false
             imageView.addSubview(errorHost.view)
-            
             NSLayoutConstraint.activate([
                 errorHost.view.centerXAnchor.constraint(equalTo: imageView.centerXAnchor),
                 errorHost.view.centerYAnchor.constraint(equalTo: imageView.centerYAnchor),
@@ -363,7 +325,6 @@ class WeatherViewController: UIViewController, UIScrollViewDelegate {
         self.hasTriggeredHaptic = false
         self.pullUpLabel.text = "UP TO DATE!"
         self.pullUpLabel.textColor = .systemCyan
-        
         if let decoded = decoded {
             self.weatherEntries = decoded
             self.updateLastSyncedTimestamp()
@@ -377,26 +338,19 @@ class WeatherViewController: UIViewController, UIScrollViewDelegate {
         [scrollView, stackView].forEach { $0.translatesAutoresizingMaskIntoConstraints = false }
         scrollView.delegate = self
         scrollView.alwaysBounceVertical = true
-        
         footerContainer.axis = .vertical
         footerContainer.spacing = 2
         footerContainer.alignment = .center
-        
         pullUpLabel.font = .systemFont(ofSize: 14, weight: .black)
         pullUpLabel.text = "PULL UP FOR FRESH DATA"
         pullUpLabel.textColor = .label
-        
         lastSyncedLabel.font = .systemFont(ofSize: 12, weight: .bold)
-        lastSyncedLabel.text = "Last Synced: --"
         lastSyncedLabel.textColor = .secondaryLabel
-        
         pullUpSpinner.hidesWhenStopped = true
         pullUpSpinner.color = spinnerColor
-        
         footerContainer.addArrangedSubview(pullUpSpinner)
         footerContainer.addArrangedSubview(pullUpLabel)
         footerContainer.addArrangedSubview(lastSyncedLabel)
-        
         NSLayoutConstraint.activate([
             scrollView.topAnchor.constraint(equalTo: view.topAnchor),
             scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
@@ -406,7 +360,6 @@ class WeatherViewController: UIViewController, UIScrollViewDelegate {
             stackView.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor),
             stackView.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor)
         ])
-        
         stackView.axis = .vertical
         stackView.spacing = 12
         stackView.alignment = .center
@@ -433,41 +386,61 @@ class WeatherViewController: UIViewController, UIScrollViewDelegate {
     }
 
     private func createWeatherCard(entry: WeatherEntry) -> UIView {
-        let card = UIView(); card.backgroundColor = .secondarySystemBackground; card.layer.cornerRadius = 20
-        let shadowContainer = UIView(); shadowContainer.layer.shadowOpacity = 0.18; shadowContainer.layer.shadowRadius = 8; shadowContainer.layer.shadowColor = UIColor.black.cgColor; shadowContainer.layer.shadowOffset = CGSize(width: 0, height: 4); shadowContainer.layer.masksToBounds = false
-        let imageContainer = UIView(); imageContainer.clipsToBounds = true; imageContainer.layer.cornerRadius = 15
-        let iv = UIImageView(); iv.contentMode = .scaleAspectFill; iv.tag = 99
-        
-        if let url = URL(string: entry.imageName ?? ""), url.scheme == "https" {
-            iv.loadRemoteImage(from: url)
-        } else {
-            iv.image = UIImage(named: entry.imageName ?? "") ?? UIImage(systemName: "photo")
+        let card = UIView()
+        card.layer.cornerRadius = cardCornerRadius
+        card.clipsToBounds = false
+        let blurStyle: UIBlurEffect.Style = traitCollection.userInterfaceStyle == .dark ? .systemThinMaterialDark : .systemThinMaterialLight
+        let glass = UIVisualEffectView(effect: UIBlurEffect(style: blurStyle))
+        glass.translatesAutoresizingMaskIntoConstraints = false
+        glass.layer.cornerRadius = cardCornerRadius
+        glass.clipsToBounds = true
+        let borderOverlay = UIView()
+        borderOverlay.translatesAutoresizingMaskIntoConstraints = false
+        borderOverlay.layer.cornerRadius = cardCornerRadius
+        borderOverlay.layer.borderWidth = 0.8
+        borderOverlay.layer.borderColor = UIColor { trait in
+            trait.userInterfaceStyle == .dark ? UIColor.white.withAlphaComponent(0.12) : UIColor.black.withAlphaComponent(0.1)
+        }.cgColor
+        let shadowContainer = UIView()
+        shadowContainer.layer.shadowOpacity = traitCollection.userInterfaceStyle == .dark ? 0.35 : 0.15
+        shadowContainer.layer.shadowRadius = 14
+        shadowContainer.layer.shadowColor = UIColor.black.cgColor
+        shadowContainer.layer.shadowOffset = CGSize(width: 0, height: 6)
+        let imageContainer = UIView()
+        imageContainer.clipsToBounds = true
+        imageContainer.layer.cornerRadius = cardImageCornerRadius
+        let iv = UIImageView()
+        iv.contentMode = .scaleAspectFill
+        iv.tag = 99
+        if let url = URL(string: entry.imageName ?? ""), url.scheme == "https" { iv.loadRemoteImage(from: url) }
+        else { iv.image = UIImage(named: entry.imageName ?? "") ?? UIImage(systemName: "photo") }
+        let tLabel = UILabel()
+        tLabel.text = entry.locationName
+        tLabel.font = .boldSystemFont(ofSize: 22)
+        tLabel.textColor = .label
+        let sLabel = UILabel()
+        sLabel.text = "\(entry.temperature ?? "") - \(entry.timestamp ?? "")"
+        sLabel.textColor = .systemBlue
+        [glass, borderOverlay, shadowContainer, tLabel, sLabel].forEach {
+            $0.translatesAutoresizingMaskIntoConstraints = false
+            card.addSubview($0)
         }
-        
-        let tLabel = UILabel(); tLabel.text = entry.locationName; tLabel.font = .boldSystemFont(ofSize: 22); tLabel.textColor = .label
-        let sLabel = UILabel(); sLabel.text = "\(entry.temperature ?? "") - \(entry.timestamp ?? "")"; sLabel.textColor = .systemBlue
-        
-        [shadowContainer, tLabel, sLabel].forEach { $0.translatesAutoresizingMaskIntoConstraints = false; card.addSubview($0) }
-        shadowContainer.addSubview(imageContainer); imageContainer.addSubview(iv)
+        shadowContainer.addSubview(imageContainer)
+        imageContainer.addSubview(iv)
         [imageContainer, iv].forEach { $0.translatesAutoresizingMaskIntoConstraints = false }
-        
         NSLayoutConstraint.activate([
-            shadowContainer.topAnchor.constraint(equalTo: card.topAnchor, constant: 12),
-            shadowContainer.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 12),
-            shadowContainer.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -12),
-            shadowContainer.heightAnchor.constraint(equalToConstant: 180),
-            imageContainer.topAnchor.constraint(equalTo: shadowContainer.topAnchor),
-            imageContainer.bottomAnchor.constraint(equalTo: shadowContainer.bottomAnchor),
-            imageContainer.leadingAnchor.constraint(equalTo: shadowContainer.leadingAnchor),
-            imageContainer.trailingAnchor.constraint(equalTo: shadowContainer.trailingAnchor),
-            iv.topAnchor.constraint(equalTo: imageContainer.topAnchor, constant: -30),
-            iv.bottomAnchor.constraint(equalTo: imageContainer.bottomAnchor, constant: 30),
-            iv.leadingAnchor.constraint(equalTo: imageContainer.leadingAnchor),
-            iv.trailingAnchor.constraint(equalTo: imageContainer.trailingAnchor),
-            tLabel.topAnchor.constraint(equalTo: shadowContainer.bottomAnchor, constant: 12),
-            tLabel.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 15),
-            sLabel.topAnchor.constraint(equalTo: tLabel.bottomAnchor, constant: 4),
-            sLabel.leadingAnchor.constraint(equalTo: tLabel.leadingAnchor),
+            glass.topAnchor.constraint(equalTo: card.topAnchor), glass.leadingAnchor.constraint(equalTo: card.leadingAnchor),
+            glass.trailingAnchor.constraint(equalTo: card.trailingAnchor), glass.bottomAnchor.constraint(equalTo: card.bottomAnchor),
+            borderOverlay.topAnchor.constraint(equalTo: card.topAnchor), borderOverlay.leadingAnchor.constraint(equalTo: card.leadingAnchor),
+            borderOverlay.trailingAnchor.constraint(equalTo: card.trailingAnchor), borderOverlay.bottomAnchor.constraint(equalTo: card.bottomAnchor),
+            shadowContainer.topAnchor.constraint(equalTo: card.topAnchor, constant: 12), shadowContainer.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 12),
+            shadowContainer.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -12), shadowContainer.heightAnchor.constraint(equalToConstant: 180),
+            imageContainer.topAnchor.constraint(equalTo: shadowContainer.topAnchor), imageContainer.bottomAnchor.constraint(equalTo: shadowContainer.bottomAnchor),
+            imageContainer.leadingAnchor.constraint(equalTo: shadowContainer.leadingAnchor), imageContainer.trailingAnchor.constraint(equalTo: shadowContainer.trailingAnchor),
+            iv.topAnchor.constraint(equalTo: imageContainer.topAnchor, constant: -30), iv.bottomAnchor.constraint(equalTo: imageContainer.bottomAnchor, constant: 30),
+            iv.leadingAnchor.constraint(equalTo: imageContainer.leadingAnchor), iv.trailingAnchor.constraint(equalTo: imageContainer.trailingAnchor),
+            tLabel.topAnchor.constraint(equalTo: shadowContainer.bottomAnchor, constant: 12), tLabel.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 15),
+            sLabel.topAnchor.constraint(equalTo: tLabel.bottomAnchor, constant: 4), sLabel.leadingAnchor.constraint(equalTo: tLabel.leadingAnchor),
             sLabel.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -18)
         ])
         return card
@@ -475,9 +448,7 @@ class WeatherViewController: UIViewController, UIScrollViewDelegate {
 
     func scrollViewDidScroll(_ scrollView: UIScrollView) {
         let pullDistance = (scrollView.contentOffset.y + scrollView.frame.size.height) - scrollView.contentSize.height
-        
         if isFetching { return }
-        
         if pullDistance > triggerThreshold {
             if !hasTriggeredHaptic {
                 pullUpLabel.text = "RELEASE TO REFRESH"
@@ -489,21 +460,21 @@ class WeatherViewController: UIViewController, UIScrollViewDelegate {
             if isShowingUpToDate {
                 pullUpLabel.text = "UP TO DATE!"
                 pullUpLabel.textColor = .systemCyan
-                
-                if abs(scrollView.contentOffset.y) > 8 || pullDistance < 20 {
-                    isShowingUpToDate = false
-                    pullUpLabel.text = "PULL UP FOR FRESH DATA"
-                    pullUpLabel.textColor = hintColor
-                }
-            } else {
+            } else if pullUpLabel.text != "NETWORK ERROR" {
                 pullUpLabel.text = "PULL UP FOR FRESH DATA"
                 pullUpLabel.textColor = hintColor
             }
-            
+            if abs(scrollView.contentOffset.y) > 20 { isShowingUpToDate = false }
             hasTriggeredHaptic = false
         }
+        for card in stackView.arrangedSubviews {
+            guard let imageView = card.viewWithTag(99) as? UIImageView else { continue }
+            let rectInView = stackView.convert(card.frame, to: view)
+            let distanceFromCenter = rectInView.midY - view.bounds.midY
+            imageView.transform = CGAffineTransform(translationX: 0, y: distanceFromCenter * 0.09)
+        }
     }
-    
+
     func animateWeatherCardAppearance(for card: UIView, delay: TimeInterval) {
         card.alpha = 0
         card.transform = CGAffineTransform(translationX: 0, y: 60).scaledBy(x: 0.85, y: 0.85)
@@ -512,17 +483,12 @@ class WeatherViewController: UIViewController, UIScrollViewDelegate {
             card.transform = .identity
         }
     }
-    
+
     func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
         let pullDistance = (scrollView.contentOffset.y + scrollView.frame.size.height) - scrollView.contentSize.height
-        
         if pullDistance > triggerThreshold && !isFetching {
-            UIView.animate(withDuration: 0.3) {
-                scrollView.contentInset.bottom = self.footerHeight
-            }
+            UIView.animate(withDuration: 0.3) { scrollView.contentInset.bottom = self.footerHeight }
             loadRemoteWeatherData(isManual: true)
-        } else if !isFetching && pullDistance <= triggerThreshold {
-            hasTriggeredHaptic = false
         }
     }
 
@@ -536,9 +502,7 @@ class WeatherViewController: UIViewController, UIScrollViewDelegate {
         guard let tappedView = gesture.view else { return }
         let index = tappedView.tag
         guard weatherEntries.indices.contains(index) else { return }
-        
         let entry = weatherEntries[index]
-        
         let zoomVC = ZoomAnimationViewController()
         zoomVC.headline = entry.locationName
         zoomVC.subheadline = entry.timestamp
@@ -547,7 +511,8 @@ class WeatherViewController: UIViewController, UIScrollViewDelegate {
         zoomVC.pressure = entry.pressure
         zoomVC.detailedDescription = entry.description
         zoomVC.isErrorState = errorCardIndexes.contains(index)
-        
+        zoomVC.modalPresentationStyle = .overFullScreen
+        zoomVC.modalTransitionStyle = .crossDissolve
         present(zoomVC, animated: true)
     }
 
@@ -561,7 +526,6 @@ extension UIImageView {
             self.image = cachedImage
             return
         }
-        
         let loader = UIHostingController(rootView: LottieImageLoader())
         loader.view.backgroundColor = .clear
         loader.view.translatesAutoresizingMaskIntoConstraints = false
@@ -572,17 +536,12 @@ extension UIImageView {
             loader.view.widthAnchor.constraint(equalToConstant: 80),
             loader.view.heightAnchor.constraint(equalToConstant: 80)
         ])
-
         URLSession.shared.dataTask(with: url) { [weak self] data, _, _ in
             DispatchQueue.main.async {
                 loader.view.removeFromSuperview()
-                guard let self else { return }
-                if let data = data, let image = UIImage(data: data) {
-                    ImageCache.shared.setObject(image, forKey: cacheKey)
-                    UIView.transition(with: self, duration: 0.3, options: .transitionCrossDissolve, animations: {
-                        self.image = image
-                    }, completion: nil)
-                }
+                guard let self = self, let data = data, let image = UIImage(data: data) else { return }
+                ImageCache.shared.setObject(image, forKey: cacheKey)
+                UIView.transition(with: self, duration: 0.3, options: .transitionCrossDissolve, animations: { self.image = image })
             }
         }.resume()
     }

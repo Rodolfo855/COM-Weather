@@ -196,7 +196,7 @@ struct ContentView: View {
                         .ignoresSafeArea(edges: .bottom)
                         .ignoresSafeArea(edges: .top)
                 case .stats:
-                    LiquidGlassEffectContainer()
+                    DeviceStorageDashboard()
                 }
             }
     }
@@ -222,7 +222,7 @@ struct ContentView: View {
             .scaledToFit()
             .frame(width: 200, height: 200)
             .shadow(color: .orange.opacity(0.4), radius: 30)
-            .opacity(activeSheet == nil ? 1.0 : 0.0)
+            .opacity(activeSheet == nil ? 1.0 : 0.80)
             .animation(.easeInOut(duration: 0.5), value: activeSheet)
     }
     

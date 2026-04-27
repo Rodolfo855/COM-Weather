@@ -9,9 +9,13 @@ import Lottie
 
 struct LottieImageLoader: View {
     var body: some View {
-        LottieView(animation: .named("imageLoading"))
+        LottieView(animation: .named("loading"))
             .playbackMode(.playing(.toProgress(1, loopMode: .repeat(.infinity))))
             .resizable()
             .aspectRatio(contentMode: .fit)
     }
+}
+
+#Preview {
+    LottieImageLoader()
 }

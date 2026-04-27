@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		7E3950EB2F63D5AB00E50FBB /* Lottie in Frameworks */ = {isa = PBXBuildFile; productRef = 7E3950EA2F63D5AB00E50FBB /* Lottie */; };
+		7E723DA32F6EA1C200BB45EA /* Lottie in Frameworks */ = {isa = PBXBuildFile; productRef = 7E723DA22F6EA1C200BB45EA /* Lottie */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -40,7 +40,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				7E3950EB2F63D5AB00E50FBB /* Lottie in Frameworks */,
+				7E723DA32F6EA1C200BB45EA /* Lottie in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -84,7 +84,7 @@
 			);
 			name = "COM Weather";
 			packageProductDependencies = (
-				7E3950EA2F63D5AB00E50FBB /* Lottie */,
+				7E723DA22F6EA1C200BB45EA /* Lottie */,
 			);
 			productName = "COM Weather";
 			productReference = 7EF26B0E2F3F0103007F6F2F /* COM Weather.app */;
@@ -115,7 +115,7 @@
 			mainGroup = 7EF26B052F3F0103007F6F2F;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				7E3950E92F63D5AB00E50FBB /* XCRemoteSwiftPackageReference "lottie-ios" */,
+				7E723DA12F6EA1C200BB45EA /* XCRemoteSwiftPackageReference "lottie-spm" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 7EF26B0F2F3F0103007F6F2F /* Products */;
@@ -357,9 +357,9 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		7E3950E92F63D5AB00E50FBB /* XCRemoteSwiftPackageReference "lottie-ios" */ = {
+		7E723DA12F6EA1C200BB45EA /* XCRemoteSwiftPackageReference "lottie-spm" */ = {
 			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/airbnb/lottie-ios.git";
+			repositoryURL = "https://github.com/airbnb/lottie-spm.git";
 			requirement = {
 				kind = upToNextMajorVersion;
 				minimumVersion = 4.6.0;
@@ -368,9 +368,9 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		7E3950EA2F63D5AB00E50FBB /* Lottie */ = {
+		7E723DA22F6EA1C200BB45EA /* Lottie */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 7E3950E92F63D5AB00E50FBB /* XCRemoteSwiftPackageReference "lottie-ios" */;
+			package = 7E723DA12F6EA1C200BB45EA /* XCRemoteSwiftPackageReference "lottie-spm" */;
 			productName = Lottie;
 		};
 /* End XCSwiftPackageProductDependency section */
